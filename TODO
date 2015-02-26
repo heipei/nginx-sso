@@ -1,0 +1,30 @@
+// vim:ft=asciidoc:et:ts=2:sw=2
+
+Problems
+========
+- How to store and parse r and s for ECDSA signature
+
+Resources
+=========
+
+https://stackoverflow.com/questions/7478821/how-can-i-convert-a-ecdsa-curve-specification-from-the-sec2-form-into-the-form-n
+- secp256r1 is the same as NIST P-256
+- https://tools.ietf.org/html/rfc4492#appendix-A
+
+| Koblitz |  ECC  |  DH/DSA/RSA
+|   163   |  192  |     1024
+|   283   |  256  |     3072
+|   409   |  384  |     7680
+|   571   |  521  |    15360
+
+prime256v1 best candidate (RSA 3072 bit equivalent)
+http://wiki.openssl.org/index.php/Command_Line_Elliptic_Curve_Operations
+
+openssl ecparam -list_curves
+openssl ecparam -list_curves|grep 192
+openssl ecparam -list_curves|grep 256
+openssl ecparam -name prim256v1 -out prime256v1.pem
+openssl ecparam -name prime256v1 -out prime256v1.pem
+openssl ecparam -in prime256v1.pem -genkey -noout -out prime256v1-key.pem
+
+https://www.socketloop.com/tutorials/golang-example-for-ecdsa-elliptic-curve-digital-signature-algorithm-functions
