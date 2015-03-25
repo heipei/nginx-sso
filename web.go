@@ -4,12 +4,16 @@ import (
 	"crypto/ecdsa"
 	//	"crypto/elliptic"
 	//	"crypto/rand"
+	//"bytes"
+	"crypto/rand"
+	"crypto/sha256"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"time"
 )
 
 var config struct {
@@ -70,7 +74,18 @@ func login_handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get the remote address
-	fmt.Printf(">> New login request from %s\n", r.RemoteAddr)
+	// Print remote address and UTC-adjusted timestamp in RFC3339 (profile of ISO 8601)
+	fmt.Printf(">> New login request from %s at %s \n", r.RemoteAddr, time.Now().UTC().Format(time.RFC3339))
+
+	// Create hash, slice it, pass it to sign (including rand reader)
+	hash := sha256.Sum256([]byte(r.RemoteAddr))
+	slice := hash[:]
+
+	er, es, _ := ecdsa.Sign(rand.Reader, config.privkey, slice)
+	fmt.Printf(">> Signature over r.RemoteAddr: %#v, %#v\n", er, es)
+
+	// Hash with printing of []byte via %x
+	fmt.Printf(">> Hash over r.RemoteAddr: %x\n", sha256.Sum256([]byte(r.RemoteAddr)))
 
 	// Iterate over all headers
 	// Join strings
