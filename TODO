@@ -3,6 +3,7 @@
 Problems
 ========
 - How to store and parse r and s for ECDSA signature
+- Cookie Storage needs safe encoding. base32/64 use = as padding, which does not work!
 - Unix domain socket or tcp socket?
  - TCP socket enables to put endpoint on single box as well
 - Apache: authtkt

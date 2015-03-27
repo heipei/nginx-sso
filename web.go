@@ -5,12 +5,16 @@ import (
 	//	"crypto/elliptic"
 	//	"crypto/rand"
 	//"bytes"
+	"bytes"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/x509"
+	"encoding/base64"
+	"encoding/gob"
 	"encoding/pem"
 	"fmt"
 	"io/ioutil"
+	"math/big"
 	"net/http"
 	"strings"
 	"time"
@@ -67,6 +71,12 @@ func readEcPrivateKeyPem(filename string) (*ecdsa.PrivateKey, error) {
 	return config.privkey, err
 }
 
+type ssoCookie struct {
+	R    *big.Int
+	S    *big.Int
+	Hash []byte
+}
+
 func login_handler(w http.ResponseWriter, r *http.Request) {
 	// This is how you get request headers
 	if val, ok := r.Header["User-Agent"]; ok {
@@ -98,6 +108,31 @@ func login_handler(w http.ResponseWriter, r *http.Request) {
 
 	// This is how you set the status code and return immediately
 	// w.WriteHeader(404)
+
+	sso_cookie := new(ssoCookie)
+	sso_cookie.R = er
+	sso_cookie.S = es
+	sso_cookie.Hash = slice
+
+	var network bytes.Buffer        // Stand-in for a network connection
+	enc := gob.NewEncoder(&network) // Will write to network.
+
+	// Encode (send) some values.
+	err := enc.Encode(sso_cookie)
+	if err != nil {
+		fmt.Printf("encode error: %s\n", err)
+	}
+
+	fmt.Printf("%#v\n", network)
+	// Setting a cookie in the response
+	expiration := time.Now().Add(365 * 24 * time.Hour)
+	cookie := http.Cookie{Name: "username", Value: "astaxie", Expires: expiration}
+	http.SetCookie(w, &cookie)
+
+	// TODO: Encode using golang gob (big int already implements interface)
+	cookie_string := fmt.Sprintf("h:%sr:%ss:%s", strings.Replace(base64.URLEncoding.EncodeToString(slice), "=", ".", -1), er.String(), es.String())
+	cookie = http.Cookie{Name: "sso", Value: cookie_string, Expires: expiration}
+	http.SetCookie(w, &cookie)
 
 	fmt.Fprintf(w, "%#v\n", config.pubkey)
 	fmt.Fprintf(w, "You have been logged in!\n")
