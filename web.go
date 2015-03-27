@@ -71,10 +71,16 @@ func readEcPrivateKeyPem(filename string) (*ecdsa.PrivateKey, error) {
 	return config.privkey, err
 }
 
+type ssoCookiePayload struct {
+	Username string
+	Expiry   int64
+}
+
 type ssoCookie struct {
-	R    *big.Int
-	S    *big.Int
-	Hash []byte
+	R       *big.Int
+	S       *big.Int
+	Hash    []byte
+	Payload ssoCookiePayload
 }
 
 func login_handler(w http.ResponseWriter, r *http.Request) {
@@ -108,6 +114,12 @@ func login_handler(w http.ResponseWriter, r *http.Request) {
 
 	// This is how you set the status code and return immediately
 	// w.WriteHeader(404)
+
+	// TODO: Have to include remote IP in hash calc as well
+	sso_cookie_payload := new(ssoCookiePayload)
+	sso_cookie_payload.Username = "Johannes Gilger"
+	sso_cookie_payload.Expiry = time.Now().Unix()
+	fmt.Printf("%d\n", sso_cookie_payload.Expiry)
 
 	sso_cookie := new(ssoCookie)
 	sso_cookie.R = er
