@@ -5,17 +5,16 @@ import (
 	//	"crypto/elliptic"
 	//	"crypto/rand"
 	//"bytes"
-	"bytes"
 	"crypto/rand"
-	"crypto/sha256"
+	"crypto/sha1"
 	"crypto/x509"
-	"encoding/base64"
-	"encoding/gob"
+	"encoding/json"
 	"encoding/pem"
 	"fmt"
 	"io/ioutil"
 	"math/big"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 )
@@ -72,15 +71,29 @@ func readEcPrivateKeyPem(filename string) (*ecdsa.PrivateKey, error) {
 }
 
 type ssoCookiePayload struct {
-	Username string
-	Expiry   int64
+	U string
 }
 
 type ssoCookie struct {
-	R       *big.Int
-	S       *big.Int
-	Hash    []byte
-	Payload ssoCookiePayload
+	R big.Int
+	S big.Int
+	H []byte
+	E int32
+	I string
+	P ssoCookiePayload
+}
+
+func auth_handler(w http.ResponseWriter, r *http.Request) {
+	cookie_string, _ := r.Cookie("sso")
+	json_string, _ := url.QueryUnescape(cookie_string.Value)
+	fmt.Printf("%s\n", json_string)
+	sso_cookie := new(ssoCookie)
+
+	err := json.Unmarshal([]byte(json_string), &sso_cookie)
+	if err != nil {
+		fmt.Println("error:", err)
+	}
+	fmt.Printf("%s\n", sso_cookie)
 }
 
 func login_handler(w http.ResponseWriter, r *http.Request) {
@@ -94,14 +107,14 @@ func login_handler(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf(">> New login request from %s at %s \n", r.RemoteAddr, time.Now().UTC().Format(time.RFC3339))
 
 	// Create hash, slice it, pass it to sign (including rand reader)
-	hash := sha256.Sum256([]byte(r.RemoteAddr))
+	hash := sha1.Sum([]byte(r.RemoteAddr))
 	slice := hash[:]
 
 	er, es, _ := ecdsa.Sign(rand.Reader, config.privkey, slice)
 	fmt.Printf(">> Signature over r.RemoteAddr: %#v, %#v\n", er, es)
 
-	// Hash with printing of []byte via %x
-	fmt.Printf(">> Hash over r.RemoteAddr: %x\n", sha256.Sum256([]byte(r.RemoteAddr)))
+	// H with printing of []byte via %x
+	fmt.Printf(">> H over r.RemoteAddr: %x\n", sha1.Sum([]byte(r.RemoteAddr)))
 
 	// Iterate over all headers
 	// Join strings
@@ -115,38 +128,52 @@ func login_handler(w http.ResponseWriter, r *http.Request) {
 	// This is how you set the status code and return immediately
 	// w.WriteHeader(404)
 
-	// TODO: Have to include remote IP in hash calc as well
+	expiration := time.Now().Add(365 * 24 * time.Hour)
 	sso_cookie_payload := new(ssoCookiePayload)
-	sso_cookie_payload.Username = "Johannes Gilger"
-	sso_cookie_payload.Expiry = time.Now().Unix()
-	fmt.Printf("%d\n", sso_cookie_payload.Expiry)
+	sso_cookie_payload.U = "jg123456"
 
 	sso_cookie := new(ssoCookie)
-	sso_cookie.R = er
-	sso_cookie.S = es
-	sso_cookie.Hash = slice
+	sso_cookie.R = *er
+	sso_cookie.S = *es
+	sso_cookie.P = *sso_cookie_payload
+	sso_cookie.H = slice
+	sso_cookie.E = int32(expiration.Unix())
+	sso_cookie.I = r.RemoteAddr // FIXME: Hash over request-header with X-Real-IP
 
-	var network bytes.Buffer        // Stand-in for a network connection
-	enc := gob.NewEncoder(&network) // Will write to network.
+	fmt.Printf("%d\n", sso_cookie.E)
+
+	//var network bytes.Buffer        // Stand-in for a network connection
+	//enc := gob.NewEncoder(&network) // Will write to network.
 
 	// Encode (send) some values.
-	err := enc.Encode(sso_cookie)
-	if err != nil {
-		fmt.Printf("encode error: %s\n", err)
-	}
+	//err := enc.Encode(sso_cookie)
+	//if err != nil {
+	//	fmt.Printf("encode error: %s\n", err)
+	//}
+	json_string, _ := json.Marshal(sso_cookie)
+	url_string := url.QueryEscape(string(json_string))
+	fmt.Printf("%d bytes: %s\n", len(json_string), json_string)
+	fmt.Printf("%d bytes: %s\n", len(url_string), url_string)
 
-	fmt.Printf("%#v\n", network)
+	//json_string_bytes := base64.URLEncoding.EncodeToString([]byte(json_string))
+	//fmt.Printf("%d bytes: %s\n", len(json_string_bytes), json_string_bytes)
+
+	//fmt.Printf("%v\n", network)
+
 	// Setting a cookie in the response
-	expiration := time.Now().Add(365 * 24 * time.Hour)
-	cookie := http.Cookie{Name: "username", Value: "astaxie", Expires: expiration}
+	//cookie := http.Cookie{Name: "username", Value: "astaxie", Expires: expiration}
+	//http.SetCookie(w, &cookie)
+
+	cookie := http.Cookie{Name: "sso", Value: url_string, Expires: expiration}
 	http.SetCookie(w, &cookie)
 
-	// TODO: Encode using golang gob (big int already implements interface)
-	cookie_string := fmt.Sprintf("h:%sr:%ss:%s", strings.Replace(base64.URLEncoding.EncodeToString(slice), "=", ".", -1), er.String(), es.String())
-	cookie = http.Cookie{Name: "sso", Value: cookie_string, Expires: expiration}
-	http.SetCookie(w, &cookie)
+	// Setting the cookie to the base64-encoded gob-encoded struct
+	//ssocookie_string := base64.URLEncoding.EncodeToString(network.Bytes())
+	//ssocookie_string = strings.Replace(ssocookie_string, "=", ".", -1)
+	//fmt.Printf("ssocookie size is %d\n", len(ssocookie_string))
+	//cookie = http.Cookie{Name: "ssocookie", Value: ssocookie_string, Expires: expiration}
+	//http.SetCookie(w, &cookie)
 
-	fmt.Fprintf(w, "%#v\n", config.pubkey)
 	fmt.Fprintf(w, "You have been logged in!\n")
 }
 
@@ -166,6 +193,7 @@ func check(e error) {
 func main() {
 	http.HandleFunc("/", handler)
 	http.HandleFunc("/login", login_handler)
+	http.HandleFunc("/auth", auth_handler)
 
 	_, err := readEcPrivateKeyPem("prime256v1-key.pem")
 	check(err)

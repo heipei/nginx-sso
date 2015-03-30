@@ -2,10 +2,12 @@
 
 Problems
 ========
-- How to store and parse r and s for ECDSA signature
-- Cookie Storage needs safe encoding. base32/64 use = as padding, which does not work!
 - Unix domain socket or tcp socket?
  - TCP socket enables to put endpoint on single box as well
+- Expires: As payload value or implicitely via cookie expires value?
+ - Explicitly to enable session cookies
+- Do not include hash in message since we have signature anyway (?)
+
 - Apache: authtkt
 - HN: https://news.ycombinator.com/item?id=7641148
 - Old PubCookie module for nginx: http://www.vitki.net/book/page/pubcookie-module-nginx
