@@ -2,8 +2,6 @@
 
 Problems
 ========
-- Unix domain socket or tcp socket?
- - TCP socket enables to put endpoint on single box as well
 - Expires: As payload value or implicitely via cookie expires value?
  - Explicitly to enable session cookies
 - Do not include hash in message since we have signature anyway (?)

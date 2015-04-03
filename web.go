@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto"
 	"crypto/ecdsa"
 	//	"crypto/elliptic"
 	//	"crypto/rand"
@@ -20,7 +21,7 @@ import (
 )
 
 var config struct {
-	pubkey  interface{}
+	pubkey  crypto.PublicKey
 	privkey *ecdsa.PrivateKey
 }
 
@@ -103,24 +104,62 @@ func auth_handler(w http.ResponseWriter, r *http.Request) {
 	// This is how you set response headers
 	w.Header().Set("REMOTE-USER", sso_cookie.P.U)
 	fmt.Printf(">> Login by %s\n", sso_cookie.P.U)
+
+	// This is how you get request headers
+	val, ok := r.Header["X-Real-Ip"]
+	if ok {
+		fmt.Printf("Remote IP %s\n", val[0])
+	}
+
+	// Print remote address and UTC-adjusted timestamp in RFC3339 (profile of ISO 8601)
+	fmt.Printf(">> New auth request from %s at %s \n", val[0], time.Now().UTC().Format(time.RFC3339))
+
+	verified := VerifyCookie(val[0], sso_cookie)
+	fmt.Printf("%s\n", verified)
+
+}
+
+func VerifyCookie(ip string, sso_cookie *ssoCookie) string {
+
+	// Create hash, slice it, pass it to sign (including rand reader)
+	hash := sha1.New()
+	hash.Write([]byte(ip))
+	hash.Write([]byte(fmt.Sprintf("%d", sso_cookie.E)))
+	hash.Write([]byte(sso_cookie.P.U))
+	sum := hash.Sum(nil)
+	slice := sum[:]
+
+	fmt.Printf(">> Hash over IP, Expires and Payload: %x\n", slice)
+
+	sign_ok := ecdsa.Verify(config.pubkey.(*ecdsa.PublicKey), slice, &sso_cookie.R, &sso_cookie.S)
+	fmt.Printf(">> Signature over hash: %t\n", sign_ok)
+
+	return "ok"
 }
 
 func CreateCookie(ip string, payload *ssoCookiePayload) string {
 
+	expiration := time.Now().Add(365 * 24 * time.Hour)
+	expire := int32(expiration.Unix())
+
 	// Create hash, slice it, pass it to sign (including rand reader)
-	hash := sha1.Sum([]byte(ip))
-	slice := hash[:]
+	hash := sha1.New()
+	hash.Write([]byte(ip))
+	hash.Write([]byte(fmt.Sprintf("%d", expire)))
+	hash.Write([]byte(payload.U))
+	sum := hash.Sum(nil)
+	slice := sum[:]
+
+	fmt.Printf(">> Hash over IP, Expires and Payload: %x\n", slice)
 
 	er, es, _ := ecdsa.Sign(rand.Reader, config.privkey, slice)
-	fmt.Printf(">> Signature over r.RemoteAddr: %#v, %#v\n", er, es)
-
-	expiration := time.Now().Add(365 * 24 * time.Hour)
+	fmt.Printf(">> Signature over hash: %#v, %#v\n", er, es)
 
 	sso_cookie := new(ssoCookie)
 	sso_cookie.R = *er
 	sso_cookie.S = *es
 	sso_cookie.H = slice
-	sso_cookie.E = int32(expiration.Unix())
+	sso_cookie.E = expire
 	sso_cookie.P = *payload
 
 	json_string, _ := json.Marshal(sso_cookie)
@@ -174,10 +213,10 @@ func main() {
 	http.HandleFunc("/login", login_handler)
 	http.HandleFunc("/auth", auth_handler)
 
-	_, err := readEcPrivateKeyPem("prime256v1-key.pem")
-	check(err)
+	//_, err := readEcPublicKeyPem("prime256v1-public.pem")
+	//check(err)
 
-	_, err = readEcPublicKeyPem("prime256v1-public.pem")
+	_, err := readEcPrivateKeyPem("prime256v1-key.pem")
 	check(err)
 
 	fmt.Printf("Server running\n")
