@@ -1,11 +1,10 @@
+// vim:ft=go:foldmethod=marker:foldmarker=[[[,]]]
 package main
 
+// import [[[
 import (
 	"crypto"
 	"crypto/ecdsa"
-	//	"crypto/elliptic"
-	//	"crypto/rand"
-	//"bytes"
 	"crypto/rand"
 	"crypto/sha1"
 	"crypto/x509"
@@ -18,14 +17,31 @@ import (
 	"net/url"
 	"strings"
 	"time"
-)
+) // ]]]
 
-var config struct {
+// typedefs [[[
+
+type SSOConfig struct {
+	port    int
 	pubkey  crypto.PublicKey
 	privkey *ecdsa.PrivateKey
 }
 
-func readEcPublicKeyPem(filename string) (interface{}, error) {
+type SSOCookiePayload struct {
+	U string // Username
+}
+
+type SSOCookie struct {
+	R big.Int          // ECDSA-Signature R
+	S big.Int          // ECDSA-Signature S
+	H []byte           // Hash over payload and expiry
+	E int32            // Expiry timestamp
+	P SSOCookiePayload // Payload
+}
+
+// ]]]
+
+func readEcPublicKeyPem(filename string) (interface{}, error) { // [[[
 	dat, err := ioutil.ReadFile(filename)
 	check(err)
 
@@ -37,9 +53,9 @@ func readEcPublicKeyPem(filename string) (interface{}, error) {
 	fmt.Println(config.pubkey)
 
 	return config.pubkey, err
-}
+} // ]]]
 
-func readEcPrivateKeyPem(filename string) (*ecdsa.PrivateKey, error) {
+func readEcPrivateKeyPem(filename string) (*ecdsa.PrivateKey, error) { // [[[
 	dat, err := ioutil.ReadFile(filename)
 	check(err)
 
@@ -48,46 +64,34 @@ func readEcPrivateKeyPem(filename string) (*ecdsa.PrivateKey, error) {
 	config.privkey, err = x509.ParseECPrivateKey(pemblock.Bytes)
 	check(err)
 
-	bytes, err := x509.MarshalECPrivateKey(config.privkey)
+	//bytes, err := x509.MarshalECPrivateKey(config.privkey)
 	check(err)
-
-	block := pem.Block{}
-	block.Bytes = bytes
-	block.Type = "EC PRIVATE KEY"
-	bytes_encoded := pem.EncodeToMemory(&block)
-	fmt.Println(string(bytes_encoded))
 
 	config.pubkey = config.privkey.Public()
 
-	bytes, _ = x509.MarshalPKIXPublicKey(config.pubkey)
-	block = pem.Block{}
-	block.Type = "EC PUBLIC KEY"
+	//block := pem.Block{}
+	//block.Bytes = bytes
+	//block.Type = "EC PRIVATE KEY"
+	//bytes_encoded := pem.EncodeToMemory(&block)
+	//fmt.Println(string(bytes_encoded))
 
-	block.Bytes = bytes
-	bytes_encoded = pem.EncodeToMemory(&block)
+	//bytes, _ = x509.MarshalPKIXPublicKey(config.pubkey)
+	//block = pem.Block{}
+	//block.Type = "EC PUBLIC KEY"
 
-	fmt.Println(string(bytes_encoded))
+	//block.Bytes = bytes
+	//bytes_encoded = pem.EncodeToMemory(&block)
+
+	//fmt.Println(string(bytes_encoded))
 
 	return config.privkey, err
-}
+} // ]]]
 
-type ssoCookiePayload struct {
-	U string // Username
-}
-
-type ssoCookie struct {
-	R big.Int          // ECDSA-Signature R
-	S big.Int          // ECDSA-Signature S
-	H []byte           // Hash over payload and expiry
-	E int32            // Expiry timestamp
-	P ssoCookiePayload // Payload
-}
-
-func auth_handler(w http.ResponseWriter, r *http.Request) {
+func auth_handler(w http.ResponseWriter, r *http.Request) { // [[[
 	cookie_string, _ := r.Cookie("sso")
 	json_string, _ := url.QueryUnescape(cookie_string.Value)
 	fmt.Printf("%s\n", json_string)
-	sso_cookie := new(ssoCookie)
+	sso_cookie := new(SSOCookie)
 
 	err := json.Unmarshal([]byte(json_string), &sso_cookie)
 	if err != nil {
@@ -117,9 +121,9 @@ func auth_handler(w http.ResponseWriter, r *http.Request) {
 	verified := VerifyCookie(val[0], sso_cookie)
 	fmt.Printf("%s\n", verified)
 
-}
+} // ]]]
 
-func VerifyCookie(ip string, sso_cookie *ssoCookie) string {
+func VerifyCookie(ip string, sso_cookie *SSOCookie) string { // [[[
 
 	// Create hash, slice it, pass it to sign (including rand reader)
 	hash := sha1.New()
@@ -135,9 +139,9 @@ func VerifyCookie(ip string, sso_cookie *ssoCookie) string {
 	fmt.Printf(">> Signature over hash: %t\n", sign_ok)
 
 	return "ok"
-}
+} // ]]]
 
-func CreateCookie(ip string, payload *ssoCookiePayload) string {
+func CreateCookie(ip string, payload *SSOCookiePayload) string { // [[[
 
 	expiration := time.Now().Add(365 * 24 * time.Hour)
 	expire := int32(expiration.Unix())
@@ -155,7 +159,7 @@ func CreateCookie(ip string, payload *ssoCookiePayload) string {
 	er, es, _ := ecdsa.Sign(rand.Reader, config.privkey, slice)
 	fmt.Printf(">> Signature over hash: %#v, %#v\n", er, es)
 
-	sso_cookie := new(ssoCookie)
+	sso_cookie := new(SSOCookie)
 	sso_cookie.R = *er
 	sso_cookie.S = *es
 	sso_cookie.H = slice
@@ -168,13 +172,13 @@ func CreateCookie(ip string, payload *ssoCookiePayload) string {
 	fmt.Printf("%d bytes: %s\n", len(url_string), url_string)
 
 	return url_string
-}
+} // ]]]
 
-func login_handler(w http.ResponseWriter, r *http.Request) {
+func login_handler(w http.ResponseWriter, r *http.Request) { // [[[
 	// This is how you get request headers
 	val, ok := r.Header["X-Real-Ip"]
 	if ok {
-		fmt.Printf("Remote IP %s\n", val[0])
+		fmt.Printf(">> Remote IP %s\n", val[0])
 	}
 
 	// Print remote address and UTC-adjusted timestamp in RFC3339 (profile of ISO 8601)
@@ -185,7 +189,7 @@ func login_handler(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf(">> %s: %s\n", key, strings.Join(value, ""))
 	}
 
-	sso_cookie_payload := new(ssoCookiePayload)
+	sso_cookie_payload := new(SSOCookiePayload)
 	sso_cookie_payload.U = "jg123456"
 
 	expiration := time.Now().Add(365 * 24 * time.Hour)
@@ -194,22 +198,17 @@ func login_handler(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &cookie)
 
 	fmt.Fprintf(w, "You have been logged in!\n")
-}
+} // ]]]
 
-func handler(w http.ResponseWriter, r *http.Request) {
-	// Send an error
-	http.Error(w, "Error xyz", http.StatusUnauthorized)
-	return
-}
-
-func check(e error) {
+func check(e error) { // [[[
 	if e != nil {
 		panic(e)
 	}
-}
+} // ]]]
 
-func main() {
-	http.HandleFunc("/", handler)
+var config = new(SSOConfig)
+
+func main() { // [[[
 	http.HandleFunc("/login", login_handler)
 	http.HandleFunc("/auth", auth_handler)
 
@@ -219,6 +218,7 @@ func main() {
 	_, err := readEcPrivateKeyPem("prime256v1-key.pem")
 	check(err)
 
-	fmt.Printf("Server running\n")
-	http.ListenAndServe(":8080", nil)
-}
+	config.port = 8080
+	fmt.Printf(">> Server running on :%d\n", config.port)
+	http.ListenAndServe(fmt.Sprintf(":%d", config.port), nil)
+} // ]]]

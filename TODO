@@ -1,5 +1,10 @@
 // vim:ft=asciidoc:et:ts=2:sw=2
 
+Functions / Flow
+================
+- Login
+- Auth
+
 Problems
 ========
 - Expires: As payload value or implicitely via cookie expires value?
@@ -13,6 +18,7 @@ Problems
  - Next step could be to put a better-performing session store in which does not actually have to verify the sig each time only hash the cookie or set another cookie
  - Maybe even set a cookie and then have nginx verify the cookie from there on
  - Better read up on nginx session / auth management, performance, best practices
+- Login could be done using something like oauth
 
 - https://elithrar.github.io/article/custom-handlers-avoiding-globals/ for handling context in a golang web app
 - libsodium
