@@ -22,9 +22,10 @@ import (
 // typedefs [[[
 
 type SSOConfig struct {
-	port    int
-	pubkey  crypto.PublicKey
-	privkey *ecdsa.PrivateKey
+	port     int
+	IPHeader string
+	pubkey   crypto.PublicKey
+	privkey  *ecdsa.PrivateKey
 }
 
 type SSOCookiePayload struct {
@@ -88,83 +89,100 @@ func readEcPrivateKeyPem(filename string) (*ecdsa.PrivateKey, error) { // [[[
 } // ]]]
 
 func auth_handler(w http.ResponseWriter, r *http.Request) { // [[[
-	cookie_string, _ := r.Cookie("sso")
+
+	// TODO: Also create function ParseCookie
+	cookie_string, err := r.Cookie("sso")
+	if err != nil {
+		fmt.Printf(">> No sso cookie")
+		http.Error(w, "Not logged in", http.StatusUnauthorized)
+		return
+	}
+
+	fmt.Printf("IP Header: %s\n", config.IPHeader)
+	val, ok := r.Header[config.IPHeader]
+	if !ok {
+		fmt.Printf(">> X-Real-Ip missing")
+		http.Error(w, "Not logged in", http.StatusUnauthorized)
+		return
+	} else {
+		fmt.Printf(">> Remote IP %s\n", val[0])
+	}
+
 	json_string, _ := url.QueryUnescape(cookie_string.Value)
 	fmt.Printf("%s\n", json_string)
 	sso_cookie := new(SSOCookie)
 
-	err := json.Unmarshal([]byte(json_string), &sso_cookie)
+	err = json.Unmarshal([]byte(json_string), &sso_cookie)
 	if err != nil {
-		fmt.Println("error:", err)
-	}
-	fmt.Printf("%#v\n", sso_cookie.R)
-
-	// This is how you set the status code and return immediately
-	// w.WriteHeader(404)
-
-	// Send an error
-	//http.Error(w, "Error xyz", http.StatusUnauthorized)
-
-	// This is how you set response headers
-	w.Header().Set("REMOTE-USER", sso_cookie.P.U)
-	fmt.Printf(">> Login by %s\n", sso_cookie.P.U)
-
-	// This is how you get request headers
-	val, ok := r.Header["X-Real-Ip"]
-	if ok {
-		fmt.Printf("Remote IP %s\n", val[0])
+		fmt.Println("Error unmarshaling JSON: ", err)
+		http.Error(w, "Error", http.StatusUnauthorized)
+		return
 	}
 
 	// Print remote address and UTC-adjusted timestamp in RFC3339 (profile of ISO 8601)
 	fmt.Printf(">> New auth request from %s at %s \n", val[0], time.Now().UTC().Format(time.RFC3339))
 
-	verified := VerifyCookie(val[0], sso_cookie)
-	fmt.Printf("%s\n", verified)
+	if VerifyCookie(val[0], sso_cookie) {
+		fmt.Fprintf(w, "You have been logged in!\n")
+		w.Header().Set("REMOTE-USER", sso_cookie.P.U)
+		fmt.Printf(">> Login by %s\n", sso_cookie.P.U)
+		return
+	} else {
+		http.Error(w, "Not authorized", http.StatusUnauthorized)
+		return
+	}
 
 } // ]]]
 
-func VerifyCookie(ip string, sso_cookie *SSOCookie) string { // [[[
-
-	// Create hash, slice it, pass it to sign (including rand reader)
+func CreateHash(ip string, sso_cookie *SSOCookie) []byte { // [[[
+	// Create hash, slice it
 	hash := sha1.New()
 	hash.Write([]byte(ip))
 	hash.Write([]byte(fmt.Sprintf("%d", sso_cookie.E)))
 	hash.Write([]byte(sso_cookie.P.U))
 	sum := hash.Sum(nil)
 	slice := sum[:]
+	return slice
+} // ]]]
 
+func VerifyCookie(ip string, sso_cookie *SSOCookie) bool { // [[[
+
+	if int32(time.Now().Unix()) > sso_cookie.E {
+		fmt.Printf(">> sso_cookie expired at %d\n", sso_cookie.E)
+		return false
+	}
+
+	slice := CreateHash(ip, sso_cookie)
 	fmt.Printf(">> Hash over IP, Expires and Payload: %x\n", slice)
 
 	sign_ok := ecdsa.Verify(config.pubkey.(*ecdsa.PublicKey), slice, &sso_cookie.R, &sso_cookie.S)
 	fmt.Printf(">> Signature over hash: %t\n", sign_ok)
+	if !sign_ok {
+		return false
+	}
 
-	return "ok"
+	return true
 } // ]]]
 
 func CreateCookie(ip string, payload *SSOCookiePayload) string { // [[[
 
-	expiration := time.Now().Add(365 * 24 * time.Hour)
+	//expiration := time.Now().Add(365 * 24 * time.Hour)
+	expiration := time.Now().Add(10 * time.Second)
 	expire := int32(expiration.Unix())
 
-	// Create hash, slice it, pass it to sign (including rand reader)
-	hash := sha1.New()
-	hash.Write([]byte(ip))
-	hash.Write([]byte(fmt.Sprintf("%d", expire)))
-	hash.Write([]byte(payload.U))
-	sum := hash.Sum(nil)
-	slice := sum[:]
+	sso_cookie := new(SSOCookie)
+	sso_cookie.E = expire
+	sso_cookie.P = *payload
+	slice := CreateHash(ip, sso_cookie)
 
 	fmt.Printf(">> Hash over IP, Expires and Payload: %x\n", slice)
 
 	er, es, _ := ecdsa.Sign(rand.Reader, config.privkey, slice)
 	fmt.Printf(">> Signature over hash: %#v, %#v\n", er, es)
 
-	sso_cookie := new(SSOCookie)
 	sso_cookie.R = *er
 	sso_cookie.S = *es
 	sso_cookie.H = slice
-	sso_cookie.E = expire
-	sso_cookie.P = *payload
 
 	json_string, _ := json.Marshal(sso_cookie)
 	url_string := url.QueryEscape(string(json_string))
@@ -218,6 +236,7 @@ func main() { // [[[
 	_, err := readEcPrivateKeyPem("prime256v1-key.pem")
 	check(err)
 
+	config.IPHeader = "X-Real-Ip"
 	config.port = 8080
 	fmt.Printf(">> Server running on :%d\n", config.port)
 	http.ListenAndServe(fmt.Sprintf(":%d", config.port), nil)

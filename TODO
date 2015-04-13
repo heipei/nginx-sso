@@ -1,15 +1,13 @@
 // vim:ft=asciidoc:et:ts=2:sw=2
 
-Functions / Flow
-================
-- Login
-- Auth
-
 Problems
 ========
 - Expires: As payload value or implicitely via cookie expires value?
  - Explicitly to enable session cookies
 - Do not include hash in message since we have signature anyway (?)
+
+- Depending on cookie vs ACL throw 401 or 403
+- Return expires as http var
 
 - Apache: authtkt
 - HN: https://news.ycombinator.com/item?id=7641148
