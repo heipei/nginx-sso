@@ -44,31 +44,31 @@ type SSOCookie struct {
 
 // ]]]
 
-func readEcPublicKeyPem(filename string) (interface{}, error) { // [[[
+func ReadECCPublicKeyPem(filename string) (interface{}, error) { // [[[
 	dat, err := ioutil.ReadFile(filename)
-	check(err)
+	CheckError(err)
 
 	pemblock, _ := pem.Decode(dat)
 
 	config.pubkey, err = x509.ParsePKIXPublicKey(pemblock.Bytes)
-	check(err)
+	CheckError(err)
 
 	fmt.Println(config.pubkey)
 
 	return config.pubkey, err
 } // ]]]
 
-func readEcPrivateKeyPem(filename string) (*ecdsa.PrivateKey, error) { // [[[
+func ReadECCPrivateKeyPem(filename string) (*ecdsa.PrivateKey, error) { // [[[
 	dat, err := ioutil.ReadFile(filename)
-	check(err)
+	CheckError(err)
 
 	pemblock, _ := pem.Decode(dat)
 
 	config.privkey, err = x509.ParseECPrivateKey(pemblock.Bytes)
-	check(err)
+	CheckError(err)
 
 	//bytes, err := x509.MarshalECPrivateKey(config.privkey)
-	check(err)
+	CheckError(err)
 
 	config.pubkey = config.privkey.Public()
 
@@ -90,7 +90,7 @@ func readEcPrivateKeyPem(filename string) (*ecdsa.PrivateKey, error) { // [[[
 	return config.privkey, err
 } // ]]]
 
-func auth_handler(w http.ResponseWriter, r *http.Request) { // [[[
+func AuthHandler(w http.ResponseWriter, r *http.Request) { // [[[
 
 	// TODO: Also create function ParseCookie
 	cookie_string, err := r.Cookie("sso")
@@ -194,7 +194,7 @@ func CreateCookie(ip string, payload *SSOCookiePayload) string { // [[[
 	return url_string
 } // ]]]
 
-func login_handler(w http.ResponseWriter, r *http.Request) { // [[[
+func LoginHandler(w http.ResponseWriter, r *http.Request) { // [[[
 	// This is how you get request headers
 	val, ok := r.Header["X-Real-Ip"]
 	if ok {
@@ -220,25 +220,25 @@ func login_handler(w http.ResponseWriter, r *http.Request) { // [[[
 	fmt.Fprintf(w, "You have been logged in!\n")
 } // ]]]
 
-func check(e error) { // [[[
+func CheckError(e error) { // [[[
 	if e != nil {
 		panic(e)
 	}
 } // ]]]
 
 func RegisterHandlers() { // [[[
-	http.HandleFunc("/login", login_handler)
-	http.HandleFunc("/auth", auth_handler)
+	http.HandleFunc("/login", LoginHandler)
+	http.HandleFunc("/auth", AuthHandler)
 } // ]]]
 
 func ParseArgs() { // [[[
 	_ = flag.String("pubkey", "prime256v1-public.pem", "Filename of PEM-encoded ECC public key")
-	//_, err := readEcPublicKeyPem("prime256v1-public.pem")
-	//check(err)
+	//_, err := ReadECCPublicKeyPem("prime256v1-public.pem")
+	//CheckError(err)
 
 	privatekeyfile := flag.String("privkey", "prime256v1-key.pem", "Filename of PEM-encoded ECC private key")
-	_, err := readEcPrivateKeyPem(*privatekeyfile)
-	check(err)
+	_, err := ReadECCPrivateKeyPem(*privatekeyfile)
+	CheckError(err)
 
 	flag.StringVar(&config.IPHeader, "real-ip", "X-Real-Ip", "Name of X-Real-IP Header")
 	flag.IntVar(&config.port, "port", 8080, "Listening port")
