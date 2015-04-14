@@ -2,9 +2,8 @@
 
 Problems
 ========
-- Expires: As payload value or implicitely via cookie expires value?
- - Explicitly to enable session cookies
 - Do not include hash in message since we have signature anyway (?)
+- Verify necessary headers / cookies using middleware / closures
 
 - Depending on cookie vs ACL throw 401 or 403
 - Return expires as http var

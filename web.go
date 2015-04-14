@@ -102,13 +102,13 @@ func AuthHandler(config *SSOConfig) http.Handler { // [[[
 		}
 
 		log.Infof("IP Header: %s", config.IPHeader)
-		val, ok := r.Header[config.IPHeader]
-		if !ok {
-			log.Infof(">> X-Real-Ip missing")
+		ip := r.Header.Get(config.IPHeader)
+		if ip == "" {
+			log.Infof(">> Header %s missing", config.IPHeader)
 			http.Error(w, "Not logged in", http.StatusUnauthorized)
 			return
 		} else {
-			log.Infof(">> Remote IP %s", val[0])
+			log.Infof(">> Remote IP %s", ip)
 		}
 
 		json_string, _ := url.QueryUnescape(cookie_string.Value)
@@ -123,9 +123,9 @@ func AuthHandler(config *SSOConfig) http.Handler { // [[[
 		}
 
 		// Print remote address and UTC-adjusted timestamp in RFC3339 (profile of ISO 8601)
-		log.Infof(">> New auth request from %s at %s ", val[0], time.Now().UTC().Format(time.RFC3339))
+		log.Infof(">> New auth request from %s at %s ", ip, time.Now().UTC().Format(time.RFC3339))
 
-		if VerifyCookie(val[0], sso_cookie, config) {
+		if VerifyCookie(ip, sso_cookie, config) {
 			fmt.Fprintf(w, "You have been logged in!\n")
 			w.Header().Set("REMOTE-USER", sso_cookie.P.U)
 			log.Infof(">> Login by %s", sso_cookie.P.U)
@@ -141,9 +141,13 @@ func AuthHandler(config *SSOConfig) http.Handler { // [[[
 func LoginHandler(config *SSOConfig) http.Handler { // [[[
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// This is how you get request headers
-		val, ok := r.Header["X-Real-Ip"]
-		if ok {
-			log.Infof(">> Remote IP %s", val[0])
+		ip := r.Header.Get(config.IPHeader)
+		if ip == "" {
+			log.Infof(">> Header %s missing", config.IPHeader)
+			http.Error(w, "Not logged in", http.StatusUnauthorized)
+			return
+		} else {
+			log.Infof(">> Remote IP %s", ip)
 		}
 
 		// Print remote address and UTC-adjusted timestamp in RFC3339 (profile of ISO 8601)
@@ -158,7 +162,7 @@ func LoginHandler(config *SSOConfig) http.Handler { // [[[
 		sso_cookie_payload.U = "jg123456"
 
 		expiration := time.Now().Add(365 * 24 * time.Hour)
-		url_string := CreateCookie(val[0], sso_cookie_payload, config)
+		url_string := CreateCookie(ip, sso_cookie_payload, config)
 		cookie := http.Cookie{Name: "sso", Value: url_string, Expires: expiration}
 		http.SetCookie(w, &cookie)
 
