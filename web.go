@@ -23,11 +23,14 @@ import (
 
 // typedefs [[[
 
+type AuthenticateFunc func(r *http.Request) string
+
 type SSOConfig struct {
-	port     int
-	IPHeader string
-	pubkey   crypto.PublicKey
-	privkey  *ecdsa.PrivateKey
+	port         int
+	IPHeader     string
+	pubkey       crypto.PublicKey
+	privkey      *ecdsa.PrivateKey
+	Authenticate AuthenticateFunc
 }
 
 type SSOCookiePayload struct {
@@ -139,6 +142,10 @@ func AuthHandler(config *SSOConfig) http.Handler { // [[[
 
 } // ]]]
 
+func Authenticate(r *http.Request) string { // [[[
+	return "jg123456"
+} // ]]]
+
 func LoginHandler(config *SSOConfig) http.Handler { // [[[
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// This is how you get request headers
@@ -160,7 +167,7 @@ func LoginHandler(config *SSOConfig) http.Handler { // [[[
 		}
 
 		sso_cookie_payload := new(SSOCookiePayload)
-		sso_cookie_payload.U = "jg123456"
+		sso_cookie_payload.U = config.Authenticate(r)
 
 		expiration := time.Now().Add(365 * 24 * time.Hour)
 		url_string := CreateCookie(ip, sso_cookie_payload, config)
@@ -255,6 +262,8 @@ func ParseArgs(config *SSOConfig) { // [[[
 	_, err := ReadECCPrivateKeyPem(*privatekeyfile, config)
 	CheckError(err)
 	log.Infof(">> Read ECC private key from %s", *privatekeyfile)
+
+	config.Authenticate = AuthenticateFunc(Authenticate)
 } // ]]]
 
 func main() { // [[[
