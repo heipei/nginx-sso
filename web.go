@@ -126,8 +126,9 @@ func AuthHandler(config *SSOConfig) http.Handler { // [[[
 		log.Infof(">> New auth request from %s at %s ", ip, time.Now().UTC().Format(time.RFC3339))
 
 		if VerifyCookie(ip, sso_cookie, config) {
-			fmt.Fprintf(w, "You have been logged in!\n")
-			w.Header().Set("REMOTE-USER", sso_cookie.P.U)
+			w.Header().Set("Remote-User", sso_cookie.P.U)
+			w.Header().Set("Remote-Expiry", fmt.Sprintf("%d", sso_cookie.E))
+			fmt.Fprintf(w, "Authorized!\n")
 			log.Infof(">> Login by %s", sso_cookie.P.U)
 			return
 		} else {
