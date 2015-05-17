@@ -35,12 +35,12 @@ type SSOConfig struct {
 
 type SSOCookiePayload struct {
 	U string // Username
+	G string // Group string
 }
 
 type SSOCookie struct {
 	R big.Int          // ECDSA-Signature R
 	S big.Int          // ECDSA-Signature S
-	H []byte           // Hash over payload and expiry
 	E int32            // Expiry timestamp
 	P SSOCookiePayload // Payload
 }
@@ -226,7 +226,6 @@ func CreateCookie(ip string, payload *SSOCookiePayload, config *SSOConfig) strin
 
 	sso_cookie.R = *er
 	sso_cookie.S = *es
-	sso_cookie.H = slice
 
 	json_string, _ := json.Marshal(sso_cookie)
 	url_string := url.QueryEscape(string(json_string))
