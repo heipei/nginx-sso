@@ -13,6 +13,7 @@ import (
 	"flag"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
+	//"github.com/heipei/nginx-sso/ssocookie"
 	"io/ioutil"
 	"math/big"
 	"net/http"
