@@ -18,6 +18,8 @@ Problems
 
 - Verify necessary headers / cookies using middleware / closures
 
+- Options such as expire time via cmd line or config file?
+
 - Implement ACL logic
   - Depending on cookie vs ACL throw 401 or 403
 

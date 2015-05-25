@@ -1,4 +1,7 @@
 // vim:ft=go:foldmethod=marker:foldmarker=[[[,]]]
+
+// ssocookie - Functions for handling login and auth using the SSO cookie
+// (c) 2015 by Johannes Gilger
 package ssocookie
 
 // imports [[[
@@ -50,7 +53,9 @@ func CreateHash(ip string, sso_cookie *Cookie) []byte { // [[[
 	hash := sha1.New()
 	hash.Write([]byte(ip))
 	hash.Write([]byte(fmt.Sprintf("%d", sso_cookie.E)))
+	// Fixme: Convert arbitrary JSON to []byte
 	hash.Write([]byte(sso_cookie.P.U))
+	hash.Write([]byte(sso_cookie.P.G))
 	sum := hash.Sum(nil)
 	slice := sum[:]
 	return slice

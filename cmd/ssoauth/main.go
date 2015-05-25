@@ -1,4 +1,7 @@
 // vim:ft=go:foldmethod=marker:foldmarker=[[[,]]]
+
+// ssoauth - Authenticate (verify) SSO cookie
+// (c) 2015 by Johannes Gilger
 package main
 
 // imports [[[
@@ -75,30 +78,22 @@ func CheckError(e error) { // [[[
 	}
 } // ]]]
 
-func RegisterHandlers(config *ssocookie.Config) { // [[[
-	http.Handle("/auth", AuthHandler(config))
-} // ]]]
-
 func ParseArgs(config *ssocookie.Config) { // [[[
-	_ = flag.String("pubkey", "prime256v1-public.pem", "Filename of PEM-encoded ECC public key")
-	//_, err := ReadECCPublicKeyPem("prime256v1-public.pem")
-	//CheckError(err)
-
-	privatekeyfile := flag.String("privkey", "prime256v1-key.pem", "Filename of PEM-encoded ECC private key")
+	publickeyfile := flag.String("pubkey", "prime256v1-public.pem", "Filename of PEM-encoded ECC public key")
 
 	flag.StringVar(&config.IPHeader, "real-ip", "X-Real-Ip", "Name of X-Real-IP Header")
 	flag.IntVar(&config.Port, "port", 8080, "Listening port")
 	flag.Parse()
 
-	_, err := ssocookie.ReadECCPrivateKeyPem(*privatekeyfile, config)
+	_, err := ssocookie.ReadECCPublicKeyPem(*publickeyfile, config)
 	CheckError(err)
-	log.Infof(">> Read ECC private key from %s", *privatekeyfile)
+	log.Infof(">> Read ECC public key from %s", *publickeyfile)
 } // ]]]
 
 func main() { // [[[
 	config := new(ssocookie.Config)
 
-	RegisterHandlers(config)
+	http.Handle("/auth", AuthHandler(config))
 
 	ParseArgs(config)
 

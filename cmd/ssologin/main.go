@@ -1,4 +1,7 @@
 // vim:ft=go:foldmethod=marker:foldmarker=[[[,]]]
+
+// ssologin - Login (create) SSO cookie
+// (c) 2015 by Johannes Gilger
 package main
 
 // imports [[[
@@ -12,7 +15,6 @@ import (
 	"time"
 ) // ]]]
 
-// TODO: These two functions go into Login program
 func Authenticate(r *http.Request) string { // [[[
 	return "jg123456"
 } // ]]]
@@ -60,17 +62,15 @@ func RegisterHandlers(config *ssocookie.Config) { // [[[
 } // ]]]
 
 func ParseArgs(config *ssocookie.Config) { // [[[
-	publickeyfile := flag.String("pubkey", "prime256v1-public.pem", "Filename of PEM-encoded ECC public key")
+	privatekeyfile := flag.String("privkey", "prime256v1-key.pem", "Filename of PEM-encoded ECC private key")
 
 	flag.StringVar(&config.IPHeader, "real-ip", "X-Real-Ip", "Name of X-Real-IP Header")
 	flag.IntVar(&config.Port, "port", 8080, "Listening port")
 	flag.Parse()
 
-	_, err := ssocookie.ReadECCPublicKeyPem(*publickeyfile, config)
+	_, err := ssocookie.ReadECCPrivateKeyPem(*privatekeyfile, config)
 	CheckError(err)
-	log.Infof(">> Read ECC public key from %s", *publickeyfile)
-
-	config.Authenticate = ssocookie.AuthFunc(Authenticate)
+	log.Infof(">> Read ECC private key from %s", *privatekeyfile)
 } // ]]]
 
 func main() { // [[[
