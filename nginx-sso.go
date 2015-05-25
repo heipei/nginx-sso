@@ -5,17 +5,14 @@ package main
 import (
 	"crypto"
 	"crypto/ecdsa"
-	"crypto/rand"
-	"crypto/sha1"
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
 	"flag"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
-	//"github.com/heipei/nginx-sso/ssocookie"
+	"github.com/heipei/nginx-sso/ssocookie"
 	"io/ioutil"
-	"math/big"
 	"net/http"
 	"net/url"
 	"strings"
@@ -32,18 +29,6 @@ type SSOConfig struct {
 	pubkey       crypto.PublicKey
 	privkey      *ecdsa.PrivateKey
 	Authenticate AuthenticateFunc
-}
-
-type SSOCookiePayload struct {
-	U string // Username
-	G string // Group string
-}
-
-type SSOCookie struct {
-	R big.Int          // ECDSA-Signature R
-	S big.Int          // ECDSA-Signature S
-	E int32            // Expiry timestamp
-	P SSOCookiePayload // Payload
 }
 
 // ]]]
@@ -117,7 +102,7 @@ func AuthHandler(config *SSOConfig) http.Handler { // [[[
 
 		json_string, _ := url.QueryUnescape(cookie_string.Value)
 		log.Infof("%s", json_string)
-		sso_cookie := new(SSOCookie)
+		sso_cookie := new(ssocookie.SSOCookie)
 
 		err = json.Unmarshal([]byte(json_string), &sso_cookie)
 		if err != nil {
@@ -126,12 +111,17 @@ func AuthHandler(config *SSOConfig) http.Handler { // [[[
 			return
 		}
 
-		// Print remote address and UTC-adjusted timestamp in RFC3339 (profile of ISO 8601)
-		log.Infof(">> New auth request from %s at %s ", ip, time.Now().UTC().Format(time.RFC3339))
+		// Print remote address and UTC-adjusted timestamp in RFC3339
+		// (profile of ISO 8601)
+		log.Infof(">> New auth request from %s at %s ", ip,
+			time.Now().UTC().Format(time.RFC3339))
 
-		if VerifyCookie(ip, sso_cookie, config) {
+		if ssocookie.VerifyCookie(ip, sso_cookie,
+			config.pubkey.(*ecdsa.PublicKey)) {
+
 			w.Header().Set("Remote-User", sso_cookie.P.U)
-			w.Header().Set("Remote-Expiry", fmt.Sprintf("%d", sso_cookie.E))
+			w.Header().Set("Remote-Expiry", fmt.Sprintf("%d",
+				sso_cookie.E))
 			fmt.Fprintf(w, "Authorized!\n")
 			log.Infof(">> Login by %s", sso_cookie.P.U)
 			return
@@ -141,99 +131,6 @@ func AuthHandler(config *SSOConfig) http.Handler { // [[[
 		}
 	})
 
-} // ]]]
-
-func Authenticate(r *http.Request) string { // [[[
-	return "jg123456"
-} // ]]]
-
-func LoginHandler(config *SSOConfig) http.Handler { // [[[
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// This is how you get request headers
-		ip := r.Header.Get(config.IPHeader)
-		if ip == "" {
-			log.Infof(">> Header %s missing", config.IPHeader)
-			http.Error(w, "Not logged in", http.StatusUnauthorized)
-			return
-		} else {
-			log.Infof(">> Remote IP %s", ip)
-		}
-
-		// Print remote address and UTC-adjusted timestamp in RFC3339 (profile of ISO 8601)
-		log.Infof(">> New login request from %s at %s ", r.RemoteAddr, time.Now().UTC().Format(time.RFC3339))
-
-		// Iterate over all headers
-		for key, value := range r.Header {
-			log.Infof(">> %s: %s", key, strings.Join(value, ""))
-		}
-
-		sso_cookie_payload := new(SSOCookiePayload)
-		sso_cookie_payload.U = config.Authenticate(r)
-
-		expiration := time.Now().Add(365 * 24 * time.Hour)
-		url_string := CreateCookie(ip, sso_cookie_payload, config)
-		cookie := http.Cookie{Name: "sso", Value: url_string, Expires: expiration}
-		http.SetCookie(w, &cookie)
-
-		fmt.Fprintf(w, "You have been logged in!\n")
-	})
-} // ]]]
-
-func CreateHash(ip string, sso_cookie *SSOCookie) []byte { // [[[
-	// Create hash, slice it
-	hash := sha1.New()
-	hash.Write([]byte(ip))
-	hash.Write([]byte(fmt.Sprintf("%d", sso_cookie.E)))
-	hash.Write([]byte(sso_cookie.P.U))
-	sum := hash.Sum(nil)
-	slice := sum[:]
-	return slice
-} // ]]]
-
-func VerifyCookie(ip string, sso_cookie *SSOCookie, config *SSOConfig) bool { // [[[
-
-	if int32(time.Now().Unix()) > sso_cookie.E {
-		log.Infof(">> sso_cookie expired at %d", sso_cookie.E)
-		return false
-	}
-
-	slice := CreateHash(ip, sso_cookie)
-	log.Infof(">> Hash over IP, Expires and Payload: %x", slice)
-
-	sign_ok := ecdsa.Verify(config.pubkey.(*ecdsa.PublicKey), slice, &sso_cookie.R, &sso_cookie.S)
-	log.Infof(">> Signature over hash: %t", sign_ok)
-	if !sign_ok {
-		return false
-	}
-
-	return true
-} // ]]]
-
-func CreateCookie(ip string, payload *SSOCookiePayload, config *SSOConfig) string { // [[[
-
-	//expiration := time.Now().Add(365 * 24 * time.Hour)
-	expiration := time.Now().Add(10 * time.Second)
-	expire := int32(expiration.Unix())
-
-	sso_cookie := new(SSOCookie)
-	sso_cookie.E = expire
-	sso_cookie.P = *payload
-	slice := CreateHash(ip, sso_cookie)
-
-	log.Infof(">> Hash over IP, Expires and Payload: %x", slice)
-
-	er, es, _ := ecdsa.Sign(rand.Reader, config.privkey, slice)
-	log.Infof(">> Signature over hash: %#v, %#v", er, es)
-
-	sso_cookie.R = *er
-	sso_cookie.S = *es
-
-	json_string, _ := json.Marshal(sso_cookie)
-	url_string := url.QueryEscape(string(json_string))
-	log.Infof("%d bytes: %s", len(json_string), json_string)
-	log.Infof("%d bytes: %s", len(url_string), url_string)
-
-	return url_string
 } // ]]]
 
 func CheckError(e error) { // [[[
@@ -275,4 +172,47 @@ func main() { // [[[
 
 	log.Infof(">> Server running on 127.0.0.1:%d", config.port)
 	log.Fatal(http.ListenAndServe(fmt.Sprintf("127.0.0.1:%d", config.port), nil))
+} // ]]]
+
+// TODO: These two functions go into Login program
+func Authenticate(r *http.Request) string { // [[[
+	return "jg123456"
+} // ]]]
+
+func LoginHandler(config *SSOConfig) http.Handler { // [[[
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// This is how you get request headers
+		ip := r.Header.Get(config.IPHeader)
+		if ip == "" {
+			log.Infof(">> Header %s missing", config.IPHeader)
+			http.Error(w, "Not logged in", http.StatusUnauthorized)
+			return
+		} else {
+			log.Infof(">> Remote IP %s", ip)
+		}
+
+		// Print remote address and UTC-adjusted timestamp in RFC3339
+		// (profile of ISO 8601)
+		log.Infof(">> New login request from %s at %s ", r.RemoteAddr,
+			time.Now().UTC().Format(time.RFC3339))
+
+		// Iterate over all headers
+		for key, value := range r.Header {
+			log.Infof(">> %s: %s", key, strings.Join(value, ""))
+		}
+
+		sso_cookie_payload := new(ssocookie.SSOCookiePayload)
+
+		// TODO: Pass sso_cookie as parameter to set U and G
+		sso_cookie_payload.U = config.Authenticate(r)
+
+		expiration := time.Now().Add(365 * 24 * time.Hour)
+		url_string := ssocookie.CreateCookie(ip, sso_cookie_payload,
+			config.privkey)
+		cookie := http.Cookie{Name: "sso", Value: url_string,
+			Expires: expiration}
+		http.SetCookie(w, &cookie)
+
+		fmt.Fprintf(w, "You have been logged in!\n")
+	})
 } // ]]]
