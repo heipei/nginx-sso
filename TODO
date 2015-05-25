@@ -23,6 +23,9 @@ Problems
 
 - Return expires as http var
 
+- Explore whether we can specify HTTP Host during login and set the cookie for that domain
+ - This way one login-controller can service multiple domains
+
 Others
 ======
 - nginx/auth/cookie: http://wiki.shopware.com/SSO-with-Nginx-auth_request-module_detail_1811.html
