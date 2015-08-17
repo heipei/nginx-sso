@@ -1,7 +1,12 @@
 // vim:ft=go:foldmethod=marker:foldmarker=[[[,]]]
 
 // ssocookie - Functions for handling login and auth using the SSO cookie
-// (c) 2015 by Johannes Gilger
+//
+// This package implements functions that can be used both by the SSO cookie
+// login service as well as the SSO cookie auth service.
+//
+// (c) 2015 by Johannes Gilger <heipei@hackvalue.de>
+
 package ssocookie
 
 // imports [[[
@@ -32,6 +37,7 @@ type Config struct {
 	Pubkey       crypto.PublicKey
 	Privkey      *ecdsa.PrivateKey
 	Authenticate AuthFunc
+	Expiry       time.Duration
 }
 
 type CookiePayload struct {
@@ -49,11 +55,13 @@ type Cookie struct {
 // ]]]
 
 func CreateHash(ip string, sso_cookie *Cookie) []byte { // [[[
+
 	// Create hash, slice it
 	hash := sha1.New()
 	hash.Write([]byte(ip))
 	hash.Write([]byte(fmt.Sprintf("%d", sso_cookie.E)))
-	// Fixme: Convert arbitrary JSON to []byte
+
+	// TODO: Convert arbitrary JSON to []byte
 	hash.Write([]byte(sso_cookie.P.U))
 	hash.Write([]byte(sso_cookie.P.G))
 	sum := hash.Sum(nil)
@@ -61,10 +69,10 @@ func CreateHash(ip string, sso_cookie *Cookie) []byte { // [[[
 	return slice
 } // ]]]
 
-func CreateCookie(ip string, payload *CookiePayload, privkey *ecdsa.PrivateKey) string { // [[[
+func CreateCookie(ip string, payload *CookiePayload, privkey *ecdsa.PrivateKey, expiry time.Duration) string { // [[[
 
-	//expiration := time.Now().Add(365 * 24 * time.Hour)
-	expiration := time.Now().Add(10 * time.Second)
+	// TODO: Expire time should be configurable
+	expiration := time.Now().Add(time.Duration(expiry) * time.Second)
 	expire := int32(expiration.Unix())
 
 	sso_cookie := new(Cookie)

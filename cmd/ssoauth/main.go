@@ -1,7 +1,8 @@
 // vim:ft=go:foldmethod=marker:foldmarker=[[[,]]]
 
 // ssoauth - Authenticate (verify) SSO cookie
-// (c) 2015 by Johannes Gilger
+//
+// (c) 2015 by Johannes Gilger <heipei@hackvalue.de>
 package main
 
 // imports [[[

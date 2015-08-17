@@ -30,6 +30,7 @@ Problems
 
 Others
 ======
+- nginx-sso: https://www.timmclean.net/2015/03/31/jwt-algorithm-confusion.html
 - nginx/auth/cookie: http://wiki.shopware.com/SSO-with-Nginx-auth_request-module_detail_1811.html
 - Apache: authtkt
 - HN: https://news.ycombinator.com/item?id=7641148

@@ -1,7 +1,8 @@
 // vim:ft=go:foldmethod=marker:foldmarker=[[[,]]]
 
 // ssologin - Login (create) SSO cookie
-// (c) 2015 by Johannes Gilger
+//
+// (c) 2015 by Johannes Gilger <heipei@hackvalue.de>
 package main
 
 // imports [[[
@@ -46,9 +47,9 @@ func LoginHandler(config *ssocookie.Config) http.Handler { // [[[
 		// TODO: Pass sso_cookie as parameter to set U and G
 		sso_cookie_payload.U = config.Authenticate(r)
 
-		expiration := time.Now().Add(365 * 24 * time.Hour)
+		expiration := time.Now().Add(config.Expiry * time.Second)
 		url_string := ssocookie.CreateCookie(ip, sso_cookie_payload,
-			config.Privkey)
+			config.Privkey, config.Expiry)
 		cookie := http.Cookie{Name: "sso", Value: url_string,
 			Expires: expiration}
 		http.SetCookie(w, &cookie)
@@ -66,6 +67,7 @@ func ParseArgs(config *ssocookie.Config) { // [[[
 
 	flag.StringVar(&config.IPHeader, "real-ip", "X-Real-Ip", "Name of X-Real-IP Header")
 	flag.IntVar(&config.Port, "port", 8080, "Listening port")
+	flag.DurationVar(&config.Expiry, "expiry", 3600*time.Second, "Cookie expiry time (seconds)")
 	flag.Parse()
 
 	_, err := ssocookie.ReadECCPrivateKeyPem(*privatekeyfile, config)
