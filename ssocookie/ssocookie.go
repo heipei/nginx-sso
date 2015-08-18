@@ -137,7 +137,7 @@ func ReadECCPublicKeyPem(filename string, config *Config) (interface{}, error) {
 	config.Pubkey, err = x509.ParsePKIXPublicKey(pemblock.Bytes)
 	CheckError(err)
 
-	fmt.Println(config.Pubkey)
+	PrintPublicKey(config.Pubkey)
 
 	return config.Pubkey, err
 } // ]]]
@@ -156,23 +156,28 @@ func ReadECCPrivateKeyPem(filename string, config *Config) (*ecdsa.PrivateKey, e
 
 	config.Pubkey = config.Privkey.Public()
 
+	PrintPublicKey(config.Pubkey)
+
 	//block := pem.Block{}
 	//block.Bytes = bytes
 	//block.Type = "EC PRIVATE KEY"
 	//bytes_encoded := pem.EncodeToMemory(&block)
 	//fmt.Println(string(bytes_encoded))
 
-	//bytes, _ = x509.MarshalPKIXPublicKey(config.pubkey)
-	//block = pem.Block{}
-	//block.Type = "EC PUBLIC KEY"
-
-	//block.Bytes = bytes
-	//bytes_encoded = pem.EncodeToMemory(&block)
-
-	//fmt.Println(string(bytes_encoded))
-
 	return config.Privkey, err
 } // ]]]
+
+func PrintPublicKey(pubkey crypto.PublicKey) {
+
+	bytes, _ := x509.MarshalPKIXPublicKey(pubkey)
+	block := pem.Block{}
+	block.Type = "EC PUBLIC KEY"
+
+	block.Bytes = bytes
+	bytes_encoded := pem.EncodeToMemory(&block)
+
+	fmt.Println(string(bytes_encoded))
+}
 
 func CheckError(e error) { // [[[
 	if e != nil {
