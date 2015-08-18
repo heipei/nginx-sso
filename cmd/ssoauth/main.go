@@ -13,6 +13,7 @@ import (
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/heipei/nginx-sso/ssocookie"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"time"
@@ -59,6 +60,7 @@ func AuthHandler(config *ssocookie.Config) http.Handler { // [[[
 			config.Pubkey.(*ecdsa.PublicKey)) {
 
 			w.Header().Set("Remote-User", sso_cookie.P.U)
+			w.Header().Set("Remote-Groups", sso_cookie.P.G)
 			w.Header().Set("Remote-Expiry", fmt.Sprintf("%d",
 				sso_cookie.E))
 			fmt.Fprintf(w, "Authorized!\n")
@@ -81,12 +83,22 @@ func CheckError(e error) { // [[[
 
 func ParseArgs(config *ssocookie.Config) { // [[[
 	publickeyfile := flag.String("pubkey", "prime256v1-public.pem", "Filename of PEM-encoded ECC public key")
+	configfile := flag.String("config", "config.json", "ACL config file (JSON)")
 
 	flag.StringVar(&config.IPHeader, "real-ip", "X-Real-Ip", "Name of X-Real-IP Header")
 	flag.IntVar(&config.Port, "port", 8080, "Listening port")
 	flag.Parse()
 
-	_, err := ssocookie.ReadECCPublicKeyPem(*publickeyfile, config)
+	c, err := ioutil.ReadFile(*configfile)
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = json.Unmarshal(c, &config.Acl)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	_, err = ssocookie.ReadECCPublicKeyPem(*publickeyfile, config)
 	CheckError(err)
 	log.Infof(">> Read ECC public key from %s", *publickeyfile)
 } // ]]]

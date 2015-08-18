@@ -31,6 +31,17 @@ import (
 
 type AuthFunc func(r *http.Request) string
 
+type AclConfig struct {
+	Vhosts map[string]struct {
+		Users       []string
+		Groups      []string
+		UrlPrefixes map[string]struct {
+			Users  []string
+			Groups []string
+		}
+	}
+}
+
 type Config struct {
 	Port         int
 	IPHeader     string
@@ -38,6 +49,7 @@ type Config struct {
 	Privkey      *ecdsa.PrivateKey
 	Authenticate AuthFunc
 	Expiry       time.Duration
+	Acl          AclConfig
 }
 
 type CookiePayload struct {
@@ -72,7 +84,7 @@ func CreateHash(ip string, sso_cookie *Cookie) []byte { // [[[
 func CreateCookie(ip string, payload *CookiePayload, privkey *ecdsa.PrivateKey, expiry time.Duration) string { // [[[
 
 	// TODO: Expire time should be configurable
-	expiration := time.Now().Add(time.Duration(expiry) * time.Second)
+	expiration := time.Now().Add(expiry)
 	expire := int32(expiration.Unix())
 
 	sso_cookie := new(Cookie)
@@ -106,6 +118,7 @@ func VerifyCookie(ip string, sso_cookie *Cookie, pubkey *ecdsa.PublicKey) bool {
 	slice := CreateHash(ip, sso_cookie)
 	log.Infof(">> Hash over IP, Expires and Payload: %x", slice)
 
+	log.Infof(">> R: %#v, S: %#v", &sso_cookie.R, &sso_cookie.S)
 	sign_ok := ecdsa.Verify(pubkey, slice, &sso_cookie.R, &sso_cookie.S)
 	log.Infof(">> Signature over hash: %t", sign_ok)
 	if !sign_ok {

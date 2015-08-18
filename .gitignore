@@ -4,3 +4,4 @@ web
 ecc
 nginx-sso
 sso-login
+*.swp
