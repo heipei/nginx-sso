@@ -10,6 +10,8 @@ Two parts
 
 Problems
 ========
+- Add config option for domain to set cookie for
+
 - Implement generic JSON payload
   - Maybe start with U and G first
   - http://devel.io/2013/08/19/go-handling-arbitrary-json/

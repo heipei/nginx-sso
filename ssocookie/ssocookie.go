@@ -50,6 +50,7 @@ type Config struct {
 	Authenticate AuthFunc
 	Expiry       time.Duration
 	Acl          AclConfig
+	Domain       string
 }
 
 type CookiePayload struct {
@@ -83,7 +84,6 @@ func CreateHash(ip string, sso_cookie *Cookie) []byte { // [[[
 
 func CreateCookie(ip string, payload *CookiePayload, privkey *ecdsa.PrivateKey, expiry time.Duration) string { // [[[
 
-	// TODO: Expire time should be configurable
 	expiration := time.Now().Add(expiry)
 	expire := int32(expiration.Unix())
 

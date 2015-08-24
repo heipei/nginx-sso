@@ -63,13 +63,21 @@ func AuthHandler(config *ssocookie.Config) http.Handler { // [[[
 			w.Header().Set("Remote-Groups", sso_cookie.P.G)
 			w.Header().Set("Remote-Expiry", fmt.Sprintf("%d",
 				sso_cookie.E))
-			fmt.Fprintf(w, "Authorized!\n")
-			log.Infof(">> Login by %s", sso_cookie.P.U)
-			return
 		} else {
 			http.Error(w, "Not authorized", http.StatusUnauthorized)
 			return
 		}
+
+		/*
+			for k, v := range r.Header {
+				log.Infof("%s:%s", k, v)
+			}
+		*/
+
+		log.Infof(">> Request for Host %s, Path %s", r.Host, r.URL.Path)
+		fmt.Fprintf(w, "Authorized!\n")
+		log.Infof(">> Login by %s", sso_cookie.P.U)
+		return
 	})
 
 } // ]]]

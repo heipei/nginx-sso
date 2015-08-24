@@ -51,8 +51,9 @@ func LoginHandler(config *ssocookie.Config) http.Handler { // [[[
 		expiration := time.Now().Add(config.Expiry)
 		url_string := ssocookie.CreateCookie(ip, sso_cookie_payload,
 			config.Privkey, config.Expiry)
+		// TODO: Add domain / path / secure / HTTP Only
 		cookie := http.Cookie{Name: "sso", Value: url_string,
-			Expires: expiration}
+			Expires: expiration, Secure: false, Domain: ".dev"}
 		http.SetCookie(w, &cookie)
 
 		fmt.Fprintf(w, "You have been logged in!\n")
