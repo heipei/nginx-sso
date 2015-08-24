@@ -90,13 +90,10 @@ func ParseArgs(config *ssocookie.Config) { // [[[
 	flag.Parse()
 
 	c, err := ioutil.ReadFile(*configfile)
-	if err != nil {
-		log.Fatal(err)
-	}
+	CheckError(err)
+
 	err = json.Unmarshal(c, &config.Acl)
-	if err != nil {
-		log.Fatal(err)
-	}
+	CheckError(err)
 
 	_, err = ssocookie.ReadECCPublicKeyPem(*publickeyfile, config)
 	CheckError(err)

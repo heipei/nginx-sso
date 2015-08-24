@@ -1,0 +1,31 @@
+class ConfigModule:
+    config = None
+    configs = {
+        "development": {
+            'vhosts': {
+                'internal.dev': {
+                    'users': [],
+                    'groups': [],
+                    'url_prefixes': {
+                        "/foo/": {"groups": ["x"], "users": []},
+                        "/test_auth/": {"groups": [], "users": ["Johannes Gilger"]},
+                    }
+                },
+                'localhost': {
+                    'users': [],
+                    'groups': [],
+                    'url_prefixes': {}
+                }
+            },
+            'ecdsa_pubkey': 'run/pubkey.pem',
+            'port': 8084,
+            'log_prefix': 'log/'
+        },
+        "production": {
+            'users': ["Johannes Gilger"],
+            'groups': ["x:engineering"],
+            'ecdsa_pubkey': 'run/pubkey.pem',
+            'port': 8084,
+            'log_prefix': 'log/'
+        }
+    }

@@ -5,3 +5,5 @@ ecc
 nginx-sso
 sso-login
 *.swp
+ssologin
+ssoauth

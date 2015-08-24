@@ -1,0 +1,13 @@
+{
+	"localhost": {
+		"Users": ["jg123456"],
+		"Groups": ["x:engineering"],
+		"UrlPrefixes": {
+			"/secret/": {
+				"Users": ["jg123456"],
+				"Groups": ["x:engineering"]
+			}
+		}
+	}
+}
+
