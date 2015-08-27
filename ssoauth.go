@@ -20,6 +20,10 @@ import (
 	"time"
 ) // ]]]
 
+func Unauthorized(w http.ResponseWriter) {
+	http.Error(w, "Not logged in", http.StatusUnauthorized)
+}
+
 func AuthHandler(config *ssocookie.Config) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
@@ -34,8 +38,8 @@ func AuthHandler(config *ssocookie.Config) http.Handler {
 		host := r.Host
 
 		if ip == "" {
-			log.Infof("Header %s missing", config.IPHeader)
-			http.Error(w, "Not logged in", http.StatusUnauthorized)
+			log.Warnf("Header %s missing", config.IPHeader)
+			Unauthorized(w)
 			return
 		} else {
 			log.Infof("Remote IP %s", ip)
@@ -92,6 +96,9 @@ func AuthHandler(config *ssocookie.Config) http.Handler {
 			}
 			// TODO: Check if prefix is in acl
 			// If not: Check if global username / groups matches
+		} else {
+			http.Error(w, "Not authorized", http.StatusUnauthorized)
+			return
 		}
 
 		log.Infof("Request for Host %s, Path %s", host, uri)

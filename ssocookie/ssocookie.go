@@ -90,10 +90,10 @@ func CreateCookie(ip string, payload *CookiePayload, privkey *ecdsa.PrivateKey, 
 	sso_cookie.P = *payload
 	slice := CreateHash(ip, sso_cookie)
 
-	log.Infof(">> Hash over IP, Expires and Payload: %x", slice)
+	log.Infof("Hash over IP, Expires and Payload: %x", slice)
 
 	er, es, _ := ecdsa.Sign(rand.Reader, privkey, slice)
-	log.Infof(">> Signature over hash: %#v, %#v", er, es)
+	log.Infof("Signature over hash: %#v, %#v", er, es)
 
 	sso_cookie.R = *er
 	sso_cookie.S = *es
@@ -109,16 +109,16 @@ func CreateCookie(ip string, payload *CookiePayload, privkey *ecdsa.PrivateKey, 
 func VerifyCookie(ip string, sso_cookie *Cookie, pubkey *ecdsa.PublicKey) bool { // [[[
 
 	if int32(time.Now().Unix()) > sso_cookie.E {
-		log.Infof(">> sso_cookie expired at %d", sso_cookie.E)
+		log.Infof("sso_cookie expired at %d", sso_cookie.E)
 		return false
 	}
 
 	slice := CreateHash(ip, sso_cookie)
-	log.Infof(">> Hash over IP, Expires and Payload: %x", slice)
+	log.Infof("Hash over IP, Expires and Payload: %x", slice)
 
-	log.Infof(">> R: %#v, S: %#v", &sso_cookie.R, &sso_cookie.S)
+	log.Infof("R: %#v, S: %#v", &sso_cookie.R, &sso_cookie.S)
 	sign_ok := ecdsa.Verify(pubkey, slice, &sso_cookie.R, &sso_cookie.S)
-	log.Infof(">> Signature over hash: %t", sign_ok)
+	log.Infof("Signature over hash: %t", sign_ok)
 	if !sign_ok {
 		return false
 	}
