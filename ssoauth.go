@@ -16,28 +16,37 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 ) // ]]]
 
-func AuthHandler(config *ssocookie.Config) http.Handler { // [[[
+func AuthHandler(config *ssocookie.Config) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		// TODO: Debug
+		for k, _ := range r.Header {
+			log.Debugf("%s: %s", k, r.Header.Get(k))
+		}
+
+		// TODO: Verify these
+		uri := r.Header.Get("X-Original-Uri")
+		ip := r.Header.Get(config.IPHeader)
+		host := r.Host
+
+		if ip == "" {
+			log.Infof("Header %s missing", config.IPHeader)
+			http.Error(w, "Not logged in", http.StatusUnauthorized)
+			return
+		} else {
+			log.Infof("Remote IP %s", ip)
+		}
 
 		// TODO: Also create function ParseCookie
 		cookie_string, err := r.Cookie("sso")
 		if err != nil {
-			log.Infof(">> No sso cookie")
+			log.Infof("No sso cookie")
 			http.Error(w, "Not logged in", http.StatusUnauthorized)
 			return
-		}
-
-		log.Infof("IP Header: %s", config.IPHeader)
-		ip := r.Header.Get(config.IPHeader)
-		if ip == "" {
-			log.Infof(">> Header %s missing", config.IPHeader)
-			http.Error(w, "Not logged in", http.StatusUnauthorized)
-			return
-		} else {
-			log.Infof(">> Remote IP %s", ip)
 		}
 
 		json_string, _ := url.QueryUnescape(cookie_string.Value)
@@ -53,7 +62,7 @@ func AuthHandler(config *ssocookie.Config) http.Handler { // [[[
 
 		// Print remote address and UTC-adjusted timestamp in RFC3339
 		// (profile of ISO 8601)
-		log.Infof(">> New auth request from %s at %s ", ip,
+		log.Infof("New auth request from %s at %s ", ip,
 			time.Now().UTC().Format(time.RFC3339))
 
 		if ssocookie.VerifyCookie(ip, sso_cookie,
@@ -68,19 +77,30 @@ func AuthHandler(config *ssocookie.Config) http.Handler { // [[[
 			return
 		}
 
-		/*
-			for k, v := range r.Header {
-				log.Infof("%s:%s", k, v)
-			}
-		*/
+		// TODO: Check that we have the headers
+		acl, ok := config.Acl[host]
 
-		log.Infof(">> Request for Host %s, Path %s", r.Host, r.URL.Path)
+		if ok {
+			log.Debugf("acl entry: %s", acl)
+
+			log.Debugf("vhosts: %s", acl.UrlPrefixes)
+			for prefix, rules := range acl.UrlPrefixes {
+				fmt.Printf("%s: %s\n", prefix, rules)
+				if strings.HasPrefix(uri, prefix) {
+					log.Debugf("Found prefix %s for URL %s", prefix, uri)
+				}
+			}
+			// TODO: Check if prefix is in acl
+			// If not: Check if global username / groups matches
+		}
+
+		log.Infof("Request for Host %s, Path %s", host, uri)
 		fmt.Fprintf(w, "Authorized!\n")
-		log.Infof(">> Login by %s", sso_cookie.P.U)
+		log.Infof("Login by %s", sso_cookie.P.U)
 		return
 	})
 
-} // ]]]
+}
 
 func CheckError(e error) { // [[[
 	if e != nil {
@@ -99,13 +119,16 @@ func ParseArgs(config *ssocookie.Config) { // [[[
 
 	c, err := ioutil.ReadFile(*configfile)
 	CheckError(err)
+	fmt.Println("%s", string(c))
 
 	err = json.Unmarshal(c, &config.Acl)
 	CheckError(err)
 
+	fmt.Println("%v", config.Acl)
+
 	_, err = ssocookie.ReadECCPublicKeyPem(*publickeyfile, config)
 	CheckError(err)
-	log.Infof(">> Read ECC public key from %s", *publickeyfile)
+	log.Infof("Read ECC public key from %s", *publickeyfile)
 } // ]]]
 
 func main() { // [[[
@@ -115,6 +138,8 @@ func main() { // [[[
 
 	ParseArgs(config)
 
-	log.Infof(">> Server running on 127.0.0.1:%d", config.Port)
+	log.SetLevel(log.DebugLevel)
+
+	log.Infof("Server running on 127.0.0.1:%d", config.Port)
 	log.Fatal(http.ListenAndServe(fmt.Sprintf("127.0.0.1:%d", config.Port), nil))
 } // ]]]

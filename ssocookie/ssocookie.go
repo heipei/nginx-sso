@@ -31,15 +31,13 @@ import (
 
 type AuthFunc func(r *http.Request) string
 
-type AclConfig struct {
-	Vhosts map[string]struct {
-		Users       []string
-		Groups      []string
-		UrlPrefixes map[string]struct {
-			Users  []string
-			Groups []string
-		}
-	}
+type AclConfig map[string]struct {
+	Users       []string `json:"Users"`
+	Groups      []string `json:"Groups"`
+	UrlPrefixes map[string]struct {
+		Users  []string `json:"Users"`
+		Groups []string `Groups:"Groups"`
+	} `json:"UrlPrefixes"`
 }
 
 type Config struct {

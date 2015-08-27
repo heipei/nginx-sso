@@ -3,7 +3,7 @@
 TOOLS = $(wildcard *.go)
 BINARIES = $(patsubst %.go,%,$(TOOLS))
 
-%: %.go
+%: %.go ssocookie/ssocookie.go
 	go build $@.go
 
 all: $(BINARIES)
