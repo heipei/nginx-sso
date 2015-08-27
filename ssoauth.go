@@ -92,10 +92,20 @@ func AuthHandler(config *ssocookie.Config) http.Handler {
 				fmt.Printf("%s: %s\n", prefix, rules)
 				if strings.HasPrefix(uri, prefix) {
 					log.Debugf("Found prefix %s for URL %s", prefix, uri)
+					fmt.Println("Users: %s", rules.Users)
+					// TODO: Move into functions, accept early
+					for _, user := range rules.Users {
+						if user == sso_cookie.P.U {
+							fmt.Printf("Found user %s\n", user)
+						}
+					}
+					for _, group := range rules.Groups {
+						if strings.HasPrefix(sso_cookie.P.G, group) {
+							fmt.Printf("Found group prefix %s\n", group)
+						}
+					}
 				}
 			}
-			// TODO: Check if prefix is in acl
-			// If not: Check if global username / groups matches
 		} else {
 			http.Error(w, "Not authorized", http.StatusUnauthorized)
 			return

@@ -47,6 +47,7 @@ func LoginHandler(config *ssocookie.Config) http.Handler { // [[[
 		// TODO: Pass sso_cookie as parameter to set U and G
 		config.Authenticate = Authenticate
 		sso_cookie_payload.U = config.Authenticate(r)
+		sso_cookie_payload.G = "x:engineering"
 
 		expiration := time.Now().Add(config.Expiry)
 		url_string := ssocookie.CreateCookie(ip, sso_cookie_payload,
