@@ -1,4 +1,4 @@
-// vim:ft=go:foldmethod=marker:foldmarker=[[[,]]]
+// vim:ft=go:foldmethod=indent:foldnestmax=1
 
 // ssocookie - Functions for handling login and auth using the SSO cookie
 //
@@ -9,7 +9,7 @@
 
 package ssocookie
 
-// imports [[[
+// imports
 import (
 	"crypto"
 	"crypto/ecdsa"
@@ -25,9 +25,9 @@ import (
 	"net/http"
 	"net/url"
 	"time"
-) // ]]]
+)
 
-// typedefs [[[
+// typedefs
 
 type AuthFunc func(r *http.Request) string
 
@@ -63,9 +63,7 @@ type Cookie struct {
 	P CookiePayload // Payload
 }
 
-// ]]]
-
-func CreateHash(ip string, sso_cookie *Cookie) []byte { // [[[
+func CreateHash(ip string, sso_cookie *Cookie) []byte {
 
 	// Create hash, slice it
 	hash := sha1.New()
@@ -78,9 +76,9 @@ func CreateHash(ip string, sso_cookie *Cookie) []byte { // [[[
 	sum := hash.Sum(nil)
 	slice := sum[:]
 	return slice
-} // ]]]
+}
 
-func CreateCookie(ip string, payload *CookiePayload, privkey *ecdsa.PrivateKey, expiry time.Duration) string { // [[[
+func CreateCookie(ip string, payload *CookiePayload, privkey *ecdsa.PrivateKey, expiry time.Duration) string {
 
 	expiration := time.Now().Add(expiry)
 	expire := int32(expiration.Unix())
@@ -104,9 +102,9 @@ func CreateCookie(ip string, payload *CookiePayload, privkey *ecdsa.PrivateKey, 
 	log.Infof("%d bytes: %s", len(url_string), url_string)
 
 	return url_string
-} // ]]]
+}
 
-func VerifyCookie(ip string, sso_cookie *Cookie, pubkey *ecdsa.PublicKey) bool { // [[[
+func VerifyCookie(ip string, sso_cookie *Cookie, pubkey *ecdsa.PublicKey) bool {
 
 	if int32(time.Now().Unix()) > sso_cookie.E {
 		log.Infof("sso_cookie expired at %d", sso_cookie.E)
@@ -124,9 +122,9 @@ func VerifyCookie(ip string, sso_cookie *Cookie, pubkey *ecdsa.PublicKey) bool {
 	}
 
 	return true
-} // ]]]
+}
 
-func ReadECCPublicKeyPem(filename string, config *Config) (interface{}, error) { // [[[
+func ReadECCPublicKeyPem(filename string, config *Config) (interface{}, error) {
 	dat, err := ioutil.ReadFile(filename)
 	CheckError(err)
 
@@ -138,9 +136,9 @@ func ReadECCPublicKeyPem(filename string, config *Config) (interface{}, error) {
 	PrintPublicKey(config.Pubkey)
 
 	return config.Pubkey, err
-} // ]]]
+}
 
-func ReadECCPrivateKeyPem(filename string, config *Config) (*ecdsa.PrivateKey, error) { // [[[
+func ReadECCPrivateKeyPem(filename string, config *Config) (*ecdsa.PrivateKey, error) {
 	dat, err := ioutil.ReadFile(filename)
 	CheckError(err)
 
@@ -163,7 +161,7 @@ func ReadECCPrivateKeyPem(filename string, config *Config) (*ecdsa.PrivateKey, e
 	//fmt.Println(string(bytes_encoded))
 
 	return config.Privkey, err
-} // ]]]
+}
 
 func PrintPublicKey(pubkey crypto.PublicKey) {
 
@@ -177,9 +175,9 @@ func PrintPublicKey(pubkey crypto.PublicKey) {
 	fmt.Println(string(bytes_encoded))
 }
 
-func CheckError(e error) { // [[[
+func CheckError(e error) {
 	if e != nil {
 		log.Fatal(e)
 		panic(e)
 	}
-} // ]]]
+}

@@ -1,4 +1,4 @@
-// vim:ft=go:foldmethod=marker:foldmarker=[[[,]]]
+// vim:ft=go:foldmethod=indent:foldnestmax=1
 
 // ssologin - Login (create) SSO cookie
 //
@@ -14,13 +14,13 @@ import (
 	"net/http"
 	"strings"
 	"time"
-) // ]]]
+)
 
-func Authenticate(r *http.Request) string { // [[[
+func Authenticate(r *http.Request) string {
 	return "jg123456"
-} // ]]]
+}
 
-func LoginHandler(config *ssocookie.Config) http.Handler { // [[[
+func LoginHandler(config *ssocookie.Config) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// This is how you get request headers
 		ip := r.Header.Get(config.IPHeader)
@@ -59,13 +59,13 @@ func LoginHandler(config *ssocookie.Config) http.Handler { // [[[
 
 		fmt.Fprintf(w, "You have been logged in!\n")
 	})
-} // ]]]
+}
 
-func RegisterHandlers(config *ssocookie.Config) { // [[[
+func RegisterHandlers(config *ssocookie.Config) {
 	http.Handle("/login", LoginHandler(config))
-} // ]]]
+}
 
-func ParseArgs(config *ssocookie.Config) { // [[[
+func ParseArgs(config *ssocookie.Config) {
 	privatekeyfile := flag.String("privkey", "prime256v1-key.pem", "Filename of PEM-encoded ECC private key")
 
 	flag.StringVar(&config.IPHeader, "real-ip", "X-Real-Ip", "Name of X-Real-IP Header")
@@ -76,9 +76,9 @@ func ParseArgs(config *ssocookie.Config) { // [[[
 	_, err := ssocookie.ReadECCPrivateKeyPem(*privatekeyfile, config)
 	CheckError(err)
 	log.Infof("Read ECC private key from %s", *privatekeyfile)
-} // ]]]
+}
 
-func main() { // [[[
+func main() {
 	config := new(ssocookie.Config)
 
 	RegisterHandlers(config)
@@ -87,11 +87,11 @@ func main() { // [[[
 
 	log.Infof("Server running on 127.0.0.1:%d", config.Port)
 	log.Fatal(http.ListenAndServe(fmt.Sprintf("127.0.0.1:%d", config.Port), nil))
-} // ]]]
+}
 
-func CheckError(e error) { // [[[
+func CheckError(e error) {
 	if e != nil {
 		log.Fatal(e)
 		panic(e)
 	}
-} // ]]]
+}

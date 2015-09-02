@@ -1,11 +1,11 @@
-// vim:ft=go:foldmethod=marker:foldmarker=[[[,]]]
+// vim:ft=go:foldmethod=indent:foldnestmax=1
 
 // ssoauth - Authenticate (verify) SSO cookie
 //
 // (c) 2015 by Johannes Gilger <heipei@hackvalue.de>
 package main
 
-// imports [[[
+// imports
 import (
 	"crypto/ecdsa"
 	"encoding/json"
@@ -18,7 +18,7 @@ import (
 	"net/url"
 	"strings"
 	"time"
-) // ]]]
+)
 
 func Unauthorized(w http.ResponseWriter) {
 	http.Error(w, "Not logged in", http.StatusUnauthorized)
@@ -77,7 +77,7 @@ func AuthHandler(config *ssocookie.Config) http.Handler {
 			w.Header().Set("Remote-Expiry", fmt.Sprintf("%d",
 				sso_cookie.E))
 		} else {
-			http.Error(w, "Not authorized", http.StatusUnauthorized)
+			Unauthorized(w)
 			return
 		}
 
@@ -107,7 +107,7 @@ func AuthHandler(config *ssocookie.Config) http.Handler {
 				}
 			}
 		} else {
-			http.Error(w, "Not authorized", http.StatusUnauthorized)
+			Unauthorized(w)
 			return
 		}
 
@@ -116,17 +116,16 @@ func AuthHandler(config *ssocookie.Config) http.Handler {
 		log.Infof("Login by %s", sso_cookie.P.U)
 		return
 	})
-
 }
 
-func CheckError(e error) { // [[[
+func CheckError(e error) {
 	if e != nil {
 		log.Fatal(e)
 		panic(e)
 	}
-} // ]]]
+}
 
-func ParseArgs(config *ssocookie.Config) { // [[[
+func ParseArgs(config *ssocookie.Config) {
 	publickeyfile := flag.String("pubkey", "prime256v1-public.pem", "Filename of PEM-encoded ECC public key")
 	configfile := flag.String("config", "config.json", "ACL config file (JSON)")
 
@@ -146,9 +145,9 @@ func ParseArgs(config *ssocookie.Config) { // [[[
 	_, err = ssocookie.ReadECCPublicKeyPem(*publickeyfile, config)
 	CheckError(err)
 	log.Infof("Read ECC public key from %s", *publickeyfile)
-} // ]]]
+}
 
-func main() { // [[[
+func main() {
 	config := new(ssocookie.Config)
 
 	http.Handle("/auth", AuthHandler(config))
@@ -159,4 +158,4 @@ func main() { // [[[
 
 	log.Infof("Server running on 127.0.0.1:%d", config.Port)
 	log.Fatal(http.ListenAndServe(fmt.Sprintf("127.0.0.1:%d", config.Port), nil))
-} // ]]]
+}
