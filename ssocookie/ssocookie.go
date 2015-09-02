@@ -40,6 +40,7 @@ type AclConfig map[string]struct {
 	} `json:"UrlPrefixes"`
 }
 
+// TODO: This does not make sense, need two different config structs for ssoauth/ssologin
 type Config struct {
 	Port         int
 	IPHeader     string
@@ -124,18 +125,18 @@ func VerifyCookie(ip string, sso_cookie *Cookie, pubkey *ecdsa.PublicKey) bool {
 	return true
 }
 
-func ReadECCPublicKeyPem(filename string, config *Config) (interface{}, error) {
+func ReadECCPublicKeyPem(filename string, Pubkey crypto.PublicKey) (interface{}, error) {
 	dat, err := ioutil.ReadFile(filename)
 	CheckError(err)
 
 	pemblock, _ := pem.Decode(dat)
 
-	config.Pubkey, err = x509.ParsePKIXPublicKey(pemblock.Bytes)
+	Pubkey, err = x509.ParsePKIXPublicKey(pemblock.Bytes)
 	CheckError(err)
 
-	PrintPublicKey(config.Pubkey)
+	PrintPublicKey(Pubkey)
 
-	return config.Pubkey, err
+	return Pubkey, err
 }
 
 func ReadECCPrivateKeyPem(filename string, config *Config) (*ecdsa.PrivateKey, error) {

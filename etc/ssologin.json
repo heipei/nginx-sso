@@ -1,0 +1,13 @@
+{
+	"auth.domain.dev:8080": {
+		"Users": ["jg123456"],
+		"Groups": ["x:"],
+		"UrlPrefixes": {
+			"/secret/": {
+				"Users": ["jg123456"],
+				"Groups": ["x:"]
+			}
+		}
+	}
+}
+

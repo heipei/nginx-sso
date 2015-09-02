@@ -7,6 +7,7 @@ package main
 
 // imports
 import (
+	"crypto"
 	"crypto/ecdsa"
 	"encoding/json"
 	"flag"
@@ -20,11 +21,34 @@ import (
 	"time"
 )
 
+// structs
+type AclConfig map[string]struct {
+	Users       []string `json:"Users"`
+	Groups      []string `json:"Groups"`
+	UrlPrefixes map[string]struct {
+		Users  []string `json:"Users"`
+		Groups []string `Groups:"Groups"`
+	} `json:"UrlPrefixes"`
+}
+
+// TODO: This does not make sense, need two different config structs for ssoauth/ssologin
+type Config struct {
+	Port    int
+	Headers struct {
+		Ip  string
+		Uri string
+	}
+	Pubkeyfile string
+	Pubkey     crypto.PublicKey
+	Acl        AclConfig
+	Debug      bool
+}
+
 func Unauthorized(w http.ResponseWriter) {
 	http.Error(w, "Not logged in", http.StatusUnauthorized)
 }
 
-func AuthHandler(config *ssocookie.Config) http.Handler {
+func AuthHandler(config *Config) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 		// TODO: Debug
@@ -34,11 +58,11 @@ func AuthHandler(config *ssocookie.Config) http.Handler {
 
 		// TODO: Verify these
 		uri := r.Header.Get("X-Original-Uri")
-		ip := r.Header.Get(config.IPHeader)
+		ip := r.Header.Get(config.Headers.Ip)
 		host := r.Host
 
 		if ip == "" {
-			log.Warnf("Header %s missing", config.IPHeader)
+			log.Warnf("Header %s missing", config.Headers.Ip)
 			Unauthorized(w)
 			return
 		} else {
@@ -125,11 +149,11 @@ func CheckError(e error) {
 	}
 }
 
-func ParseArgs(config *ssocookie.Config) {
+func ParseArgs(config *Config) {
 	publickeyfile := flag.String("pubkey", "prime256v1-public.pem", "Filename of PEM-encoded ECC public key")
 	configfile := flag.String("config", "config.json", "ACL config file (JSON)")
 
-	flag.StringVar(&config.IPHeader, "real-ip", "X-Real-Ip", "Name of X-Real-IP Header")
+	flag.StringVar(&config.Headers.Ip, "real-ip", "X-Real-Ip", "Name of X-Real-IP Header")
 	flag.IntVar(&config.Port, "port", 8080, "Listening port")
 	flag.Parse()
 
@@ -137,18 +161,19 @@ func ParseArgs(config *ssocookie.Config) {
 	CheckError(err)
 	fmt.Println("%s", string(c))
 
-	err = json.Unmarshal(c, &config.Acl)
+	err = json.Unmarshal(c, &config)
 	CheckError(err)
 
-	fmt.Println("%v", config.Acl)
+	fmt.Println("%v", config)
 
-	_, err = ssocookie.ReadECCPublicKeyPem(*publickeyfile, config)
+	config.Pubkey, err = ssocookie.ReadECCPublicKeyPem(*publickeyfile, config.Pubkey)
+	fmt.Printf("%v\n", config.Pubkey)
 	CheckError(err)
 	log.Infof("Read ECC public key from %s", *publickeyfile)
 }
 
 func main() {
-	config := new(ssocookie.Config)
+	config := new(Config)
 
 	http.Handle("/auth", AuthHandler(config))
 
