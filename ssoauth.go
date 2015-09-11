@@ -10,6 +10,7 @@ import (
 	"crypto"
 	"crypto/ecdsa"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
@@ -47,96 +48,125 @@ func Unauthorized(w http.ResponseWriter) {
 	http.Error(w, "Not logged in", http.StatusUnauthorized)
 }
 
+func GetHeaders(r *http.Request, config *Config) (string, string, string, error) {
+	for k, _ := range r.Header {
+		log.Debugf("%s: %s", k, r.Header.Get(k))
+	}
+
+	uri := r.Header.Get(config.Headers.Uri)
+	ip := r.Header.Get(config.Headers.Ip)
+	host := r.Host
+
+	if ip == "" {
+		log.Warnf("Header %s missing", config.Headers.Ip)
+		return "", "", "", errors.New("Header missing")
+	}
+
+	if uri == "" {
+		log.Warnf("Header %s missing", config.Headers.Uri)
+		return "", "", "", errors.New("Header missing")
+	}
+
+	return uri, ip, host, nil
+}
+
+func VerifyAcl(r *http.Request, config *Config, host string, uri string, sso_cookie *ssocookie.Cookie) bool {
+	acl, ok := config.Acl[host]
+
+	if !ok {
+		return false
+	}
+
+	log.Debugf("acl entry: %s", acl)
+
+	log.Debugf("vhosts: %s", acl.UrlPrefixes)
+	for prefix, rules := range acl.UrlPrefixes {
+		if strings.HasPrefix(uri, prefix) {
+			log.Debugf("%s%s: Users: %s, Groups: %s\n", host, prefix, rules.Users, rules.Groups)
+			// TODO: Move into functions, accept early
+			for _, user := range rules.Users {
+				if user == sso_cookie.P.U {
+					log.Debugf("Found user %s\n", user)
+					return true
+				}
+			}
+			for _, group := range rules.Groups {
+				if strings.HasPrefix(sso_cookie.P.G, group) {
+					log.Debugf("Found group prefix %s\n", group)
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+func CheckCookie(r *http.Request, config *Config, ip string, sso_cookie *ssocookie.Cookie) bool {
+	cookie_string, err := r.Cookie("sso")
+	if err != nil {
+		log.Infof("No sso cookie from %s")
+		return false
+	}
+
+	json_string, _ := url.QueryUnescape(cookie_string.Value)
+	log.Debugf("JSON payload from %s: %s", ip, json_string)
+
+	err = json.Unmarshal([]byte(json_string), &sso_cookie)
+	if err != nil {
+		log.Errorf("Error unmarshaling JSON: %s\n", err)
+		return false
+	}
+
+	// Verify that the signature of the cookie is correct
+	if !ssocookie.VerifyCookie(ip, sso_cookie,
+		config.Pubkey.(*ecdsa.PublicKey)) {
+		return false
+	}
+
+	return true
+}
+
 func AuthHandler(config *Config) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-		for k, _ := range r.Header {
-			log.Debugf("%s: %s", k, r.Header.Get(k))
-		}
+		// Get the relevant headers
+		uri, ip, host, err := GetHeaders(r, config)
 
-		uri := r.Header.Get(config.Headers.Uri)
-		ip := r.Header.Get(config.Headers.Ip)
-		host := r.Host
-
-		if ip == "" {
-			log.Warnf("Header %s missing", config.Headers.Ip)
-			Unauthorized(w)
-			return
-		}
-
-		if uri == "" {
-			log.Warnf("Header %s missing", config.Headers.Uri)
+		if err != nil {
 			Unauthorized(w)
 			return
 		}
 
 		// Print remote address and UTC-adjusted timestamp in RFC3339
-		// (profile of ISO 8601)
+		// RFC3339 is a profile of ISO 8601
 		log.Infof("Request from %s for %s%s at %s", ip, host, uri, time.Now().UTC().Format(time.RFC3339))
 
-		// TODO: Also create function ParseCookie
-		cookie_string, err := r.Cookie("sso")
-		if err != nil {
-			log.Infof("No sso cookie")
-			Unauthorized(w)
-			return
-		}
-
-		json_string, _ := url.QueryUnescape(cookie_string.Value)
-		log.Debugf("JSON payload: %s", json_string)
+		// Populate and check the SSO cookie
 		sso_cookie := new(ssocookie.Cookie)
+		cookie_ok := CheckCookie(r, config, ip, sso_cookie)
 
-		err = json.Unmarshal([]byte(json_string), &sso_cookie)
-		if err != nil {
-			log.Errorf("Error unmarshaling JSON: %s\n", err)
+		if !cookie_ok {
+			log.Warnf("Cookie for %s not OK", ip)
 			Unauthorized(w)
 			return
 		}
 
-		if ssocookie.VerifyCookie(ip, sso_cookie,
-			config.Pubkey.(*ecdsa.PublicKey)) {
+		// Look for ACL entry for this host, URI, user and group
+		acl_ok := VerifyAcl(r, config, host, uri, sso_cookie)
 
-			w.Header().Set("Remote-User", sso_cookie.P.U)
-			w.Header().Set("Remote-Groups", sso_cookie.P.G)
-			w.Header().Set("Remote-Expiry", fmt.Sprintf("%d",
-				sso_cookie.E))
-		} else {
+		if !acl_ok {
+			log.Warnf("Found no ACL entry for %s%s for user %s, groups %s", host, uri, sso_cookie.P.U, sso_cookie.P.G)
 			Unauthorized(w)
 			return
 		}
 
-		acl, ok := config.Acl[host]
-
-		if ok {
-			log.Debugf("acl entry: %s", acl)
-
-			log.Debugf("vhosts: %s", acl.UrlPrefixes)
-			for prefix, rules := range acl.UrlPrefixes {
-				fmt.Printf("%s: %s\n", prefix, rules)
-				if strings.HasPrefix(uri, prefix) {
-					log.Debugf("Found prefix %s for URL %s", prefix, uri)
-					fmt.Println("Users: %s", rules.Users)
-					// TODO: Move into functions, accept early
-					for _, user := range rules.Users {
-						if user == sso_cookie.P.U {
-							fmt.Printf("Found user %s\n", user)
-							// TODO: Accept
-						}
-					}
-					for _, group := range rules.Groups {
-						if strings.HasPrefix(sso_cookie.P.G, group) {
-							fmt.Printf("Found group prefix %s\n", group)
-							// TODO: Accept
-						}
-					}
-				}
-			}
-		} else {
-			Unauthorized(w)
-			return
-		}
-
+		// We arrived here, accept the request and set the reply headers
+		w.Header().Set("Remote-User", sso_cookie.P.U)
+		w.Header().Set("Remote-Groups", sso_cookie.P.G)
+		w.Header().Set("Remote-Expiry", fmt.Sprintf("%d",
+			sso_cookie.E))
 		fmt.Fprintf(w, "Authorized!\n")
+
 		log.Infof("Succesful request by %s for %s%s from %s", sso_cookie.P.U, host, uri, ip)
 		return
 	})

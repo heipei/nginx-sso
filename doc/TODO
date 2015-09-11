@@ -25,8 +25,6 @@ Problems
 - Implement ACL logic
   - Depending on cookie vs ACL throw 401 or 403
 
-- Return expires as http var
-
 - Explore whether we can specify HTTP Host during login and set the cookie for that domain
  - This way one login-controller can service multiple domains
 
