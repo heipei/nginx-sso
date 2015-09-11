@@ -25,7 +25,7 @@ func LoginHandler(config *ssocookie.Config) http.Handler {
 		// This is how you get request headers
 		ip := r.Header.Get(config.IPHeader)
 		if ip == "" {
-			log.Infof("Header %s missing", config.IPHeader)
+			log.Warnf("Header %s missing", config.IPHeader)
 			http.Error(w, "Not logged in", http.StatusUnauthorized)
 			return
 		} else {
@@ -39,7 +39,7 @@ func LoginHandler(config *ssocookie.Config) http.Handler {
 
 		// Iterate over all headers
 		for key, value := range r.Header {
-			log.Infof("%s: %s", key, strings.Join(value, ""))
+			log.Debugf("%s: %s", key, strings.Join(value, ""))
 		}
 
 		sso_cookie_payload := new(ssocookie.CookiePayload)
@@ -66,6 +66,7 @@ func RegisterHandlers(config *ssocookie.Config) {
 }
 
 func ParseArgs(config *ssocookie.Config) {
+	debug := flag.Bool("debug", false, "Debug-level output")
 	privatekeyfile := flag.String("privkey", "prime256v1-key.pem", "Filename of PEM-encoded ECC private key")
 
 	flag.StringVar(&config.IPHeader, "real-ip", "X-Real-Ip", "Name of X-Real-IP Header")
@@ -73,19 +74,27 @@ func ParseArgs(config *ssocookie.Config) {
 	flag.DurationVar(&config.Expiry, "expiry", 3600*time.Second, "Cookie expiry time (seconds)")
 	flag.Parse()
 
+	if *debug {
+		log.SetLevel(log.DebugLevel)
+	} else {
+		log.SetLevel(log.InfoLevel)
+	}
+
 	_, err := ssocookie.ReadECCPrivateKeyPem(*privatekeyfile, config)
 	CheckError(err)
 	log.Infof("Read ECC private key from %s", *privatekeyfile)
 }
 
 func main() {
+	log.Infof("ssologin starting")
+
 	config := new(ssocookie.Config)
 
 	RegisterHandlers(config)
 
 	ParseArgs(config)
 
-	log.Infof("Server running on 127.0.0.1:%d", config.Port)
+	log.Infof("ssologin server running on 127.0.0.1:%d", config.Port)
 	log.Fatal(http.ListenAndServe(fmt.Sprintf("127.0.0.1:%d", config.Port), nil))
 }
 

@@ -89,18 +89,18 @@ func CreateCookie(ip string, payload *CookiePayload, privkey *ecdsa.PrivateKey, 
 	sso_cookie.P = *payload
 	slice := CreateHash(ip, sso_cookie)
 
-	log.Infof("Hash over IP, Expires and Payload: %x", slice)
+	log.Debugf("Hash over IP, Expires and Payload: %x", slice)
 
 	er, es, _ := ecdsa.Sign(rand.Reader, privkey, slice)
-	log.Infof("Signature over hash: %#v, %#v", er, es)
+	log.Debugf("Signature over hash: %#v, %#v", er, es)
 
 	sso_cookie.R = *er
 	sso_cookie.S = *es
 
 	json_string, _ := json.Marshal(sso_cookie)
 	url_string := url.QueryEscape(string(json_string))
-	log.Infof("%d bytes: %s", len(json_string), json_string)
-	log.Infof("%d bytes: %s", len(url_string), url_string)
+	log.Debugf("%d bytes: %s", len(json_string), json_string)
+	log.Debugf("%d bytes: %s", len(url_string), url_string)
 
 	return url_string
 }
@@ -113,11 +113,11 @@ func VerifyCookie(ip string, sso_cookie *Cookie, pubkey *ecdsa.PublicKey) bool {
 	}
 
 	slice := CreateHash(ip, sso_cookie)
-	log.Infof("Hash over IP, Expires and Payload: %x", slice)
+	log.Debugf("Hash over IP, Expires and Payload: %x", slice)
 
-	log.Infof("R: %#v, S: %#v", &sso_cookie.R, &sso_cookie.S)
+	log.Debugf("R: %#v, S: %#v", &sso_cookie.R, &sso_cookie.S)
 	sign_ok := ecdsa.Verify(pubkey, slice, &sso_cookie.R, &sso_cookie.S)
-	log.Infof("Signature over hash: %t", sign_ok)
+	log.Debugf("Signature over hash: %t", sign_ok)
 	if !sign_ok {
 		return false
 	}
@@ -173,7 +173,7 @@ func PrintPublicKey(pubkey crypto.PublicKey) {
 	block.Bytes = bytes
 	bytes_encoded := pem.EncodeToMemory(&block)
 
-	fmt.Println(string(bytes_encoded))
+	log.Debugf("Public key: \n%s\n", string(bytes_encoded))
 }
 
 func CheckError(e error) {
