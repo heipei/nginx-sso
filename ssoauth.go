@@ -44,8 +44,18 @@ type Config struct {
 	Debug      bool
 }
 
-func Unauthorized(w http.ResponseWriter) {
+func Unauthenticated(w http.ResponseWriter) {
+	// Careful: StatusUnauthorized returns HTTP 401
+	// HTTP 401 is called "Unauthorized", but actually means
+	// "authentication failed" as per RFC 7235
 	http.Error(w, "Not logged in", http.StatusUnauthorized)
+}
+
+func Unauthorized(w http.ResponseWriter) {
+	// StatusForbidden returns HTTP 403
+	// This means "authentication worked, but you don't have access to this
+	// resource
+	http.Error(w, "Access not granted", http.StatusForbidden)
 }
 
 func GetHeaders(r *http.Request, config *Config) (string, string, string, error) {
@@ -83,7 +93,6 @@ func VerifyAcl(r *http.Request, config *Config, host string, uri string, sso_coo
 	for prefix, rules := range acl.UrlPrefixes {
 		if strings.HasPrefix(uri, prefix) {
 			log.Debugf("%s%s: Users: %s, Groups: %s\n", host, prefix, rules.Users, rules.Groups)
-			// TODO: Move into functions, accept early
 			for _, user := range rules.Users {
 				if user == sso_cookie.P.U {
 					log.Debugf("Found user %s\n", user)
@@ -104,7 +113,7 @@ func VerifyAcl(r *http.Request, config *Config, host string, uri string, sso_coo
 func CheckCookie(r *http.Request, config *Config, ip string, sso_cookie *ssocookie.Cookie) bool {
 	cookie_string, err := r.Cookie("sso")
 	if err != nil {
-		log.Infof("No sso cookie from %s")
+		log.Infof("No sso cookie from %s", ip)
 		return false
 	}
 
@@ -133,7 +142,7 @@ func AuthHandler(config *Config) http.Handler {
 		uri, ip, host, err := GetHeaders(r, config)
 
 		if err != nil {
-			Unauthorized(w)
+			Unauthenticated(w)
 			return
 		}
 
@@ -147,7 +156,7 @@ func AuthHandler(config *Config) http.Handler {
 
 		if !cookie_ok {
 			log.Warnf("Cookie for %s not OK", ip)
-			Unauthorized(w)
+			Unauthenticated(w)
 			return
 		}
 

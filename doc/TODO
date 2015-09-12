@@ -10,20 +10,16 @@ Two parts
 
 Problems
 ========
-- Add config option for domain to set cookie for
+- Figure out good integration of login code into existing systems
 
-- Implement generic JSON payload
-  - Maybe start with U and G first
+- Maybe implement generic JSON payload
   - http://devel.io/2013/08/19/go-handling-arbitrary-json/
   - On top of that: Have generic functions to verify the payload (ACL)
   - Will need generic mapping of attribute to return HTTP header as well
 
-- Verify necessary headers / cookies using middleware / closures
-
-- Options such as expire time via cmd line or config file?
-
-- Implement ACL logic
-  - Depending on cookie vs ACL throw 401 or 403
+- Add a redirect option for nginx like in https://developers.shopware.com/blog/2015/03/02/sso-with-nginx-authrequest-module/ ?
+- Add logstash logging option
+- Try with native log library again
 
 - Explore whether we can specify HTTP Host during login and set the cookie for that domain
  - This way one login-controller can service multiple domains
@@ -37,11 +33,12 @@ Others
 - Apache: authtkt
 - HN: https://news.ycombinator.com/item?id=7641148
 - Old PubCookie module for nginx: http://www.vitki.net/book/page/pubcookie-module-nginx
+
 - Also document that this is a very basic solution
  - Next step could be to put a better-performing session store in which does not actually have to verify the sig each time only hash the cookie or set another cookie
  - Maybe even set a cookie and then have nginx verify the cookie from there on
  - Better read up on nginx session / auth management, performance, best practices
-- Login could be done using something like oauth
+ - Login could be done using something like oauth
 
 - https://elithrar.github.io/article/custom-handlers-avoiding-globals/ for handling context in a golang web app
 - libsodium
