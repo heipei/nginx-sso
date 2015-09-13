@@ -22,38 +22,14 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"io/ioutil"
 	"math/big"
-	"net/http"
 	"net/url"
 	"time"
 )
 
 // typedefs
 
-type AuthFunc func(r *http.Request) string
-
-type AclConfig map[string]struct {
-	Users       []string `json:"Users"`
-	Groups      []string `json:"Groups"`
-	UrlPrefixes map[string]struct {
-		Users  []string `json:"Users"`
-		Groups []string `Groups:"Groups"`
-	} `json:"UrlPrefixes"`
-}
-
-// TODO: This does not make sense, need two different config structs for ssoauth/ssologin
-type Config struct {
-	Port         int
-	IPHeader     string
-	Pubkey       crypto.PublicKey
-	Privkey      *ecdsa.PrivateKey
-	Authenticate AuthFunc
-	Expiry       time.Duration
-	Acl          AclConfig
-	Domain       string
-}
-
 type CookiePayload struct {
-	U string // Username
+	U string // Username string
 	G string // Group string
 }
 
@@ -139,21 +115,21 @@ func ReadECCPublicKeyPem(filename string, Pubkey crypto.PublicKey) (interface{},
 	return Pubkey, err
 }
 
-func ReadECCPrivateKeyPem(filename string, config *Config) (*ecdsa.PrivateKey, error) {
+func ReadECCPrivateKeyPem(filename string) (*ecdsa.PrivateKey, error) {
 	dat, err := ioutil.ReadFile(filename)
 	CheckError(err)
 
 	pemblock, _ := pem.Decode(dat)
 
-	config.Privkey, err = x509.ParseECPrivateKey(pemblock.Bytes)
+	privkey, err := x509.ParseECPrivateKey(pemblock.Bytes)
 	CheckError(err)
 
 	//bytes, err := x509.MarshalECPrivateKey(config.privkey)
 	CheckError(err)
 
-	config.Pubkey = config.Privkey.Public()
+	//config.Pubkey = config.Privkey.Public()
 
-	PrintPublicKey(config.Pubkey)
+	//PrintPublicKey(config.Pubkey)
 
 	//block := pem.Block{}
 	//block.Bytes = bytes
@@ -161,7 +137,7 @@ func ReadECCPrivateKeyPem(filename string, config *Config) (*ecdsa.PrivateKey, e
 	//bytes_encoded := pem.EncodeToMemory(&block)
 	//fmt.Println(string(bytes_encoded))
 
-	return config.Privkey, err
+	return privkey, err
 }
 
 func PrintPublicKey(pubkey crypto.PublicKey) {
@@ -173,7 +149,7 @@ func PrintPublicKey(pubkey crypto.PublicKey) {
 	block.Bytes = bytes
 	bytes_encoded := pem.EncodeToMemory(&block)
 
-	log.Debugf("Public key: \n%s\n", string(bytes_encoded))
+	log.Debugf("Public key:\n%s", string(bytes_encoded))
 }
 
 func CheckError(e error) {

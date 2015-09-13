@@ -7,6 +7,7 @@ package main
 
 // imports [[[
 import (
+	"crypto/ecdsa"
 	"flag"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
@@ -16,16 +17,28 @@ import (
 	"time"
 )
 
+type Config struct {
+	Port    int
+	Headers struct {
+		Ip string
+	}
+	Privkey *ecdsa.PrivateKey
+	Expiry  time.Duration
+	Domain  string
+	Secure  bool
+	Debug   bool
+}
+
 func Authenticate(r *http.Request) string {
 	return "jg123456"
 }
 
-func LoginHandler(config *ssocookie.Config) http.Handler {
+func LoginHandler(config *Config) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// This is how you get request headers
-		ip := r.Header.Get(config.IPHeader)
+
+		ip := r.Header.Get(config.Headers.Ip)
 		if ip == "" {
-			log.Warnf("Header %s missing", config.IPHeader)
+			log.Warnf("Header %s missing", config.Headers.Ip)
 			http.Error(w, "Not logged in", http.StatusUnauthorized)
 			return
 		} else {
@@ -45,8 +58,7 @@ func LoginHandler(config *ssocookie.Config) http.Handler {
 		sso_cookie_payload := new(ssocookie.CookiePayload)
 
 		// TODO: Pass sso_cookie as parameter to set U and G
-		config.Authenticate = Authenticate
-		sso_cookie_payload.U = config.Authenticate(r)
+		sso_cookie_payload.U = Authenticate(r)
 		sso_cookie_payload.G = "x:engineering"
 
 		expiration := time.Now().Add(config.Expiry)
@@ -61,15 +73,15 @@ func LoginHandler(config *ssocookie.Config) http.Handler {
 	})
 }
 
-func RegisterHandlers(config *ssocookie.Config) {
+func RegisterHandlers(config *Config) {
 	http.Handle("/login", LoginHandler(config))
 }
 
-func ParseArgs(config *ssocookie.Config) {
+func ParseArgs(config *Config) {
 	debug := flag.Bool("debug", false, "Debug-level output")
 	privatekeyfile := flag.String("privkey", "prime256v1-key.pem", "Filename of PEM-encoded ECC private key")
 
-	flag.StringVar(&config.IPHeader, "real-ip", "X-Real-Ip", "Name of X-Real-IP Header")
+	flag.StringVar(&config.Headers.Ip, "real-ip", "X-Real-Ip", "Name of X-Real-IP Header")
 	flag.IntVar(&config.Port, "port", 8080, "Listening port")
 	flag.DurationVar(&config.Expiry, "expiry", 3600*time.Second, "Cookie expiry time (seconds)")
 	flag.Parse()
@@ -80,15 +92,16 @@ func ParseArgs(config *ssocookie.Config) {
 		log.SetLevel(log.InfoLevel)
 	}
 
-	_, err := ssocookie.ReadECCPrivateKeyPem(*privatekeyfile, config)
+	privkey, err := ssocookie.ReadECCPrivateKeyPem(*privatekeyfile)
 	CheckError(err)
+	config.Privkey = privkey
 	log.Infof("Read ECC private key from %s", *privatekeyfile)
 }
 
 func main() {
 	log.Infof("ssologin starting")
 
-	config := new(ssocookie.Config)
+	config := new(Config)
 
 	RegisterHandlers(config)
 
