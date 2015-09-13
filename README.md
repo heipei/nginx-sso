@@ -4,6 +4,15 @@ nginx-sso
 nginx-sso is a simple single-sign-on (SSO) solution to be used together with
 nginx. It is based on ECC public key signatures and cookies.
 
+Features
+--------
+
+With nginx-sso you can:
+
+- Authenticate users
+- Authorize users
+- Provide user-information to your backend application
+
 Building
 --------
 
