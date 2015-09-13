@@ -13,6 +13,8 @@ Problems
 - Logging withFields (e.g. during auth with IP / URL)
 - Put more common methods into ssocookie (print request, get headers)
 
+- offer tool to generate keypair
+
 - Unify method naming- and argument convention
 
 - Figure out good integration of login code into existing systems

@@ -1,5 +1,3 @@
-// vim:ft=go:foldmethod=indent:foldnestmax=1
-
 // ssologin - Login (create) SSO cookie
 //
 // (c) 2015 by Johannes Gilger <heipei@hackvalue.de>

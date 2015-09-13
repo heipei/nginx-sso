@@ -1,5 +1,3 @@
-// vim:ft=go:foldmethod=indent:foldnestmax=1
-
 // ssoauth - Authenticate (verify) SSO cookie
 //
 // (c) 2015 by Johannes Gilger <heipei@hackvalue.de>

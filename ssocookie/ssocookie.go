@@ -1,5 +1,3 @@
-// vim:ft=go:foldmethod=indent:foldnestmax=1
-
 // ssocookie - Functions for handling login and auth using the SSO cookie
 //
 // This package implements functions that can be used both by the SSO cookie
