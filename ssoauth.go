@@ -110,6 +110,8 @@ func VerifyAcl(r *http.Request, config *Config, host string, uri string, sso_coo
 	return false
 }
 
+// Check that the cookie exists, is still valid and that the signature over the
+// payload is OK
 func CheckCookie(r *http.Request, config *Config, ip string, sso_cookie *ssocookie.Cookie) bool {
 	cookie_string, err := r.Cookie("sso")
 	if err != nil {

@@ -1,4 +1,6 @@
-// vim:ft=asciidoc:et:ts=2:sw=2
+<!-- 
+vim:ft=markdown:et:ts=2:sw=2
+-->
 
 Two parts
 =========
@@ -14,8 +16,6 @@ Problems
 - Logging withFields (e.g. during auth with IP / URL)
 - Put more common methods into ssocookie (print request, get headers)
 
-- refine tool to generate keypair
-
 - Unify method naming- and argument convention
 
 - Figure out good integration of login code into existing systems
@@ -24,10 +24,6 @@ Problems
   - http://devel.io/2013/08/19/go-handling-arbitrary-json/
   - On top of that: Have generic functions to verify the payload (ACL)
   - Will need generic mapping of attribute to return HTTP header as well
-
-- Add a redirect option for nginx like in https://developers.shopware.com/blog/2015/03/02/sso-with-nginx-authrequest-module/ ?
-- Add logstash logging option
-- Try with native log library again
 
 - Explore whether we can specify HTTP Host during login and set the cookie for that domain
  - This way one login-controller can service multiple domains
