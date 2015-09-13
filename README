@@ -1,6 +1,0 @@
-1. Start nginx: ~/local/sbin/nginx -c $PWD/nginx.conf
-2. Start ssoauth: while true; do; ./ssoauth -config config.json -pubkey run/prime256v1-public.pem -port 8082; done
-3. Start ssologin: while true; do; ./ssologin -privkey run/prime256v1-key.pem -port 8081; done
-4. Add login.domain.dev and auth.domain.dev to 127.0.0.1 to /etc/hosts
-5. Browse to login.domain.dev:8080/login
-6. Browse to auth.domain.dev:8080/secret

@@ -10,10 +10,11 @@ Two parts
 
 Problems
 ========
+- Default values for JSON config parse
 - Logging withFields (e.g. during auth with IP / URL)
 - Put more common methods into ssocookie (print request, get headers)
 
-- offer tool to generate keypair
+- refine tool to generate keypair
 
 - Unify method naming- and argument convention
 
