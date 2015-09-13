@@ -174,6 +174,7 @@ func AuthHandler(config *Config) http.Handler {
 		}
 
 		// We arrived here, accept the request and set the reply headers
+		// TODO: Make these configurable as well
 		w.Header().Set("Remote-User", sso_cookie.P.U)
 		w.Header().Set("Remote-Groups", sso_cookie.P.G)
 		w.Header().Set("Remote-Expiry", fmt.Sprintf("%d",
