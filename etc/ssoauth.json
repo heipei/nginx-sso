@@ -1,6 +1,6 @@
 {
 	"debug": false,
-	"pubkeyfile": "prime256v1-public.pem",
+	"pubkeyfile": "run/prime256v1-public.pem",
 	"headers": {
 		"ip": "X-Real-Ip",
 		"uri": "X-Original-Uri"

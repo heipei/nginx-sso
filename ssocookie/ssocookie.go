@@ -110,6 +110,8 @@ func ReadECCPublicKeyPem(filename string, Pubkey crypto.PublicKey) (interface{},
 
 	PrintPublicKey(Pubkey)
 
+	log.Debugf("Read ECC public key from %s", filename)
+
 	return Pubkey, err
 }
 

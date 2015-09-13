@@ -3,7 +3,6 @@
 // (c) 2015 by Johannes Gilger <heipei@hackvalue.de>
 package main
 
-// imports
 import (
 	"crypto"
 	"crypto/ecdsa"
@@ -21,6 +20,7 @@ import (
 )
 
 // structs
+// AclConfig maps from vhosts to structs with prefixes and permissions
 type AclConfig map[string]struct {
 	Users       []string `json:"Users"`
 	Groups      []string `json:"Groups"`
@@ -42,6 +42,7 @@ type Config struct {
 	Debug      bool
 }
 
+// functions
 func Unauthenticated(w http.ResponseWriter) {
 	// Careful: StatusUnauthorized returns HTTP 401
 	// HTTP 401 is called "Unauthorized", but actually means
@@ -57,6 +58,7 @@ func Unauthorized(w http.ResponseWriter) {
 }
 
 func GetHeaders(r *http.Request, config *Config) (string, string, string, error) {
+	// TODO: This is really ugly
 	for k, _ := range r.Header {
 		log.Debugf("%s: %s", k, r.Header.Get(k))
 	}
@@ -187,31 +189,27 @@ func CheckError(e error) {
 }
 
 func ParseArgs(config *Config) {
-	debug := flag.Bool("debug", false, "Debug-level output")
-	publickeyfile := flag.String("pubkey", "prime256v1-public.pem", "Filename of PEM-encoded ECC public key")
 	configfile := flag.String("config", "config.json", "ACL config file (JSON)")
-
-	flag.StringVar(&config.Headers.Ip, "real-ip", "X-Real-Ip", "Name of X-Real-IP Header")
-	flag.IntVar(&config.Port, "port", 8080, "Listening port")
+	flag.BoolVar(&config.Debug, "debug", false, "Debug-level output")
 	flag.Parse()
 
-	if *debug {
+	// Read the config file
+	c, err := ioutil.ReadFile(*configfile)
+	CheckError(err)
+
+	// Unmarshal the config file
+	err = json.Unmarshal(c, &config)
+	CheckError(err)
+
+	// Set appropriate log-level
+	if config.Debug {
 		log.SetLevel(log.DebugLevel)
 	} else {
 		log.SetLevel(log.InfoLevel)
 	}
 
-	c, err := ioutil.ReadFile(*configfile)
+	config.Pubkey, err = ssocookie.ReadECCPublicKeyPem(config.Pubkeyfile, config.Pubkey)
 	CheckError(err)
-
-	err = json.Unmarshal(c, &config)
-	CheckError(err)
-
-	log.Debugf("%v", config)
-
-	config.Pubkey, err = ssocookie.ReadECCPublicKeyPem(*publickeyfile, config.Pubkey)
-	CheckError(err)
-	log.Infof("Read ECC public key from %s", *publickeyfile)
 }
 
 func main() {
