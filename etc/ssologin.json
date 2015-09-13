@@ -1,13 +1,13 @@
 {
-	"auth.domain.dev:8080": {
-		"Users": ["jg123456"],
-		"Groups": ["x:"],
-		"UrlPrefixes": {
-			"/secret/": {
-				"Users": ["jg123456"],
-				"Groups": ["x:"]
-			}
-		}
-	}
+	"cookie": "sso",
+	"debug": false,
+	"secure": false,
+	"expiration": 3600,
+	"domain": ".domain.dev",
+	"privkeyfile": "run/prime256v1-key.pem",
+	"headers": {
+		"ip": "X-Real-Ip",
+		"uri": "X-Original-Uri"
+	},
+	"port": 8081
 }
-

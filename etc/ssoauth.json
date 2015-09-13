@@ -1,4 +1,5 @@
 {
+	"cookie": "sso",
 	"debug": false,
 	"pubkeyfile": "run/prime256v1-public.pem",
 	"headers": {

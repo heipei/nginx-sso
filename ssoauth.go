@@ -31,6 +31,7 @@ type AclConfig map[string]struct {
 }
 
 type Config struct {
+	Cookie  string
 	Port    int
 	Headers struct {
 		Ip  string
@@ -57,8 +58,9 @@ func Unauthorized(w http.ResponseWriter) {
 	http.Error(w, "Access not granted", http.StatusForbidden)
 }
 
+// TODO: This is really ugly
 func GetHeaders(r *http.Request, config *Config) (string, string, string, error) {
-	// TODO: This is really ugly
+	// TODO: Make this a general-purpose-function for ssoauth/ssologin
 	for k, _ := range r.Header {
 		log.Debugf("%s: %s", k, r.Header.Get(k))
 	}
@@ -113,7 +115,7 @@ func VerifyAcl(r *http.Request, config *Config, host string, uri string, sso_coo
 // Check that the cookie exists, is still valid and that the signature over the
 // payload is OK
 func CheckCookie(r *http.Request, config *Config, ip string, sso_cookie *ssocookie.Cookie) bool {
-	cookie_string, err := r.Cookie("sso")
+	cookie_string, err := r.Cookie(config.Cookie)
 	if err != nil {
 		log.Infof("No sso cookie from %s", ip)
 		return false

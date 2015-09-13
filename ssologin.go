@@ -6,29 +6,34 @@ package main
 // imports [[[
 import (
 	"crypto/ecdsa"
+	"encoding/json"
 	"flag"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/heipei/nginx-sso/ssocookie"
+	"io/ioutil"
 	"net/http"
-	"strings"
 	"time"
 )
 
 type Config struct {
+	Cookie  string
 	Port    int
 	Headers struct {
 		Ip string
 	}
-	Privkey *ecdsa.PrivateKey
-	Expiry  time.Duration
-	Domain  string
-	Secure  bool
-	Debug   bool
+	Privkeyfile string
+	Privkey     *ecdsa.PrivateKey
+	Expiration  int
+	Expiry      time.Duration
+	Domain      string
+	Secure      bool
+	Debug       bool
 }
 
-func Authenticate(r *http.Request) string {
-	return "jg123456"
+// TODO: Make this more general / better to integrate
+func Authenticate(r *http.Request) (string, string) {
+	return "jg123456", "x:engineering"
 }
 
 func LoginHandler(config *Config) http.Handler {
@@ -39,8 +44,6 @@ func LoginHandler(config *Config) http.Handler {
 			log.Warnf("Header %s missing", config.Headers.Ip)
 			http.Error(w, "Not logged in", http.StatusUnauthorized)
 			return
-		} else {
-			log.Infof("Remote IP %s", ip)
 		}
 
 		// Print remote address and UTC-adjusted timestamp in RFC3339
@@ -48,23 +51,16 @@ func LoginHandler(config *Config) http.Handler {
 		log.Infof("New login request from %s at %s ", r.RemoteAddr,
 			time.Now().UTC().Format(time.RFC3339))
 
-		// Iterate over all headers
-		for key, value := range r.Header {
-			log.Debugf("%s: %s", key, strings.Join(value, ""))
-		}
-
 		sso_cookie_payload := new(ssocookie.CookiePayload)
 
-		// TODO: Pass sso_cookie as parameter to set U and G
-		sso_cookie_payload.U = Authenticate(r)
-		sso_cookie_payload.G = "x:engineering"
+		sso_cookie_payload.U, sso_cookie_payload.G = Authenticate(r)
 
 		expiration := time.Now().Add(config.Expiry)
 		url_string := ssocookie.CreateCookie(ip, sso_cookie_payload,
 			config.Privkey, config.Expiry)
-		// TODO: Add domain / path / secure / HTTP Only
-		cookie := http.Cookie{Name: "sso", Value: url_string,
-			Expires: expiration, Secure: false, Domain: ".domain.dev"}
+
+		cookie := http.Cookie{Name: config.Cookie, Value: url_string,
+			Expires: expiration, Secure: config.Secure, Domain: config.Domain}
 		http.SetCookie(w, &cookie)
 
 		fmt.Fprintf(w, "You have been logged in!\n")
@@ -76,24 +72,30 @@ func RegisterHandlers(config *Config) {
 }
 
 func ParseArgs(config *Config) {
-	debug := flag.Bool("debug", false, "Debug-level output")
-	privatekeyfile := flag.String("privkey", "prime256v1-key.pem", "Filename of PEM-encoded ECC private key")
-
-	flag.StringVar(&config.Headers.Ip, "real-ip", "X-Real-Ip", "Name of X-Real-IP Header")
-	flag.IntVar(&config.Port, "port", 8080, "Listening port")
-	flag.DurationVar(&config.Expiry, "expiry", 3600*time.Second, "Cookie expiry time (seconds)")
+	configfile := flag.String("config", "etc/ssologin.json", "config file (JSON)")
+	flag.BoolVar(&config.Debug, "debug", false, "Debug-level output")
 	flag.Parse()
 
-	if *debug {
+	// Read the config file
+	c, err := ioutil.ReadFile(*configfile)
+	CheckError(err)
+
+	// Unmarshal the config file
+	err = json.Unmarshal(c, &config)
+	CheckError(err)
+
+	config.Expiry = time.Duration(config.Expiration) * time.Second
+
+	// Set appropriate log-level
+	if config.Debug {
 		log.SetLevel(log.DebugLevel)
 	} else {
 		log.SetLevel(log.InfoLevel)
 	}
 
-	privkey, err := ssocookie.ReadECCPrivateKeyPem(*privatekeyfile)
+	privkey, err := ssocookie.ReadECCPrivateKeyPem(config.Privkeyfile)
 	CheckError(err)
 	config.Privkey = privkey
-	log.Infof("Read ECC private key from %s", *privatekeyfile)
 }
 
 func main() {
