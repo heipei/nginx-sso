@@ -12,6 +12,11 @@ Two parts
 
 Problems
 ========
+- Write tests
+- Login-flow
+ - Pass through HTTP request to another backend and then set cookie for response (?)
+ - Integrate and ship basic user/pw database store?
+
 - Default values for JSON config parse
 - Logging withFields (e.g. during auth with IP / URL)
 - Put more common methods into ssocookie (print request, get headers)

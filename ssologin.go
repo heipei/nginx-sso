@@ -51,15 +51,17 @@ func LoginHandler(config *Config) http.Handler {
 		log.Infof("New login request from %s at %s ", r.RemoteAddr,
 			time.Now().UTC().Format(time.RFC3339))
 
+		// Get the cookie payload from the Authenticate function
 		sso_cookie_payload := new(ssocookie.CookiePayload)
-
 		sso_cookie_payload.U, sso_cookie_payload.G = Authenticate(r)
 
-		expiration := time.Now().Add(config.Expiry)
-		url_string := ssocookie.CreateCookie(ip, sso_cookie_payload,
+		// Serialize the ssocookie into a string
+		cookie_string := ssocookie.CreateCookie(ip, sso_cookie_payload,
 			config.Privkey, config.Expiry)
 
-		cookie := http.Cookie{Name: config.Cookie, Value: url_string,
+		// Set the cookie
+		expiration := time.Now().Add(config.Expiry)
+		cookie := http.Cookie{Name: config.Cookie, Value: cookie_string,
 			Expires: expiration, Secure: config.Secure, Domain: config.Domain}
 		http.SetCookie(w, &cookie)
 
@@ -84,6 +86,7 @@ func ParseArgs(config *Config) {
 	err = json.Unmarshal(c, &config)
 	CheckError(err)
 
+	// Convert Expiration (int) to time type
 	config.Expiry = time.Duration(config.Expiration) * time.Second
 
 	// Set appropriate log-level
