@@ -145,16 +145,21 @@ func AuthHandler(config *Config) http.Handler {
 			return
 		}
 
+		requestLogger := log.WithFields(log.Fields{
+			"ip":   ip,
+			"uri":  uri,
+			"host": host,
+		})
 		// Print remote address and UTC-adjusted timestamp in RFC3339
 		// RFC3339 is a profile of ISO 8601
-		log.Infof("Request from %s for %s%s at %s", ip, host, uri, time.Now().UTC().Format(time.RFC3339))
+		requestLogger.Infof("Request at %s", time.Now().UTC().Format(time.RFC3339))
 
 		// Populate and check the SSO cookie
 		sso_cookie := new(ssocookie.Cookie)
 		cookie_ok := CheckCookie(r, config, ip, sso_cookie)
 
 		if !cookie_ok {
-			log.Warnf("Cookie for %s not OK", ip)
+			requestLogger.Warnf("Cookie not OK")
 			Unauthenticated(w)
 			return
 		}
@@ -163,7 +168,7 @@ func AuthHandler(config *Config) http.Handler {
 		acl_ok := VerifyAcl(r, config, host, uri, sso_cookie)
 
 		if !acl_ok {
-			log.Warnf("Found no ACL entry for %s%s for user %s, groups %s", host, uri, sso_cookie.P.U, sso_cookie.P.G)
+			requestLogger.Warnf("Found no ACL entry for user %s, groups %s", sso_cookie.P.U, sso_cookie.P.G)
 			Unauthorized(w)
 			return
 		}
@@ -174,7 +179,7 @@ func AuthHandler(config *Config) http.Handler {
 		w.Header().Set(config.ReturnHeaders.Expiry, fmt.Sprintf("%d", sso_cookie.E))
 		fmt.Fprintf(w, "Authorized!\n")
 
-		log.Infof("Succesful request by %s for %s%s from %s", sso_cookie.P.U, host, uri, ip)
+		requestLogger.Infof("Succesful request by %s", sso_cookie.P.U)
 		return
 	})
 }

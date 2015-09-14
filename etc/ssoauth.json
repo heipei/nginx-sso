@@ -1,6 +1,6 @@
 {
 	"cookie": "sso",
-	"debug": true,
+	"debug": false,
 	"pubkeyfile": "run/prime256v1-public.pem",
 	"headers": {
 		"ip": "X-Real-Ip",
