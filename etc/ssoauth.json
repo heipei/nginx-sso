@@ -6,6 +6,11 @@
 		"ip": "X-Real-Ip",
 		"uri": "X-Original-Uri"
 	},
+	"returnheaders": {
+		"user": "Remote-User",
+		"groups": "Remote-Groups",
+		"expiry": "Remote-Expiry"
+	},
 	"port": 8082,
 	"acl": {
 		"auth.domain.dev:8080": {

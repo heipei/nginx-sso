@@ -7,7 +7,6 @@ import (
 	"crypto"
 	"crypto/ecdsa"
 	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
@@ -37,6 +36,11 @@ type Config struct {
 		Ip  string
 		Uri string
 	}
+	ReturnHeaders struct {
+		User   string
+		Groups string
+		Expiry string
+	}
 	Pubkeyfile string
 	Pubkey     crypto.PublicKey
 	Acl        AclConfig
@@ -56,30 +60,6 @@ func Unauthorized(w http.ResponseWriter) {
 	// This means "authentication worked, but you don't have access to this
 	// resource
 	http.Error(w, "Access not granted", http.StatusForbidden)
-}
-
-// TODO: This is really ugly
-func GetHeaders(r *http.Request, config *Config) (string, string, string, error) {
-	// TODO: Make this a general-purpose-function for ssoauth/ssologin
-	for k, _ := range r.Header {
-		log.Debugf("%s: %s", k, r.Header.Get(k))
-	}
-
-	uri := r.Header.Get(config.Headers.Uri)
-	ip := r.Header.Get(config.Headers.Ip)
-	host := r.Host
-
-	if ip == "" {
-		log.Warnf("Header %s missing", config.Headers.Ip)
-		return "", "", "", errors.New("Header missing")
-	}
-
-	if uri == "" {
-		log.Warnf("Header %s missing", config.Headers.Uri)
-		return "", "", "", errors.New("Header missing")
-	}
-
-	return uri, ip, host, nil
 }
 
 func VerifyAcl(r *http.Request, config *Config, host string, uri string, sso_cookie *ssocookie.Cookie) bool {
@@ -142,10 +122,19 @@ func CheckCookie(r *http.Request, config *Config, ip string, sso_cookie *ssocook
 func AuthHandler(config *Config) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-		// Get the relevant headers
-		uri, ip, host, err := GetHeaders(r, config)
+		// Get the relevant HTTP headers
+		uri := r.Header.Get(config.Headers.Uri)
+		ip := r.Header.Get(config.Headers.Ip)
+		host := r.Host
 
-		if err != nil {
+		if ip == "" {
+			log.Warnf("Header %s missing", config.Headers.Ip)
+			Unauthenticated(w)
+			return
+		}
+
+		if uri == "" {
+			log.Warnf("Header %s missing", config.Headers.Uri)
 			Unauthenticated(w)
 			return
 		}
@@ -174,10 +163,9 @@ func AuthHandler(config *Config) http.Handler {
 		}
 
 		// We arrived here, accept the request and set the reply headers
-		// TODO: Make these configurable as well
-		w.Header().Set("Remote-User", sso_cookie.P.U)
-		w.Header().Set("Remote-Groups", sso_cookie.P.G)
-		w.Header().Set("Remote-Expiry", fmt.Sprintf("%d",
+		w.Header().Set(config.ReturnHeaders.User, sso_cookie.P.U)
+		w.Header().Set(config.ReturnHeaders.Groups, sso_cookie.P.G)
+		w.Header().Set(config.ReturnHeaders.Expiry, fmt.Sprintf("%d",
 			sso_cookie.E))
 		fmt.Fprintf(w, "Authorized!\n")
 
