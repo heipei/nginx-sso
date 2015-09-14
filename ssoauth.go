@@ -62,7 +62,7 @@ func Unauthenticated(w http.ResponseWriter) {
 func Unauthorized(w http.ResponseWriter) {
 	// StatusForbidden returns HTTP 403
 	// This means "authentication worked, but you don't have access to this
-	// resource
+	// resource"
 	http.Error(w, "Access not granted", http.StatusForbidden)
 }
 
@@ -96,7 +96,7 @@ func VerifyAcl(config *Config, host string, uri string, sso_cookie *ssocookie.Co
 		return false
 	}
 
-	log.Debugf("ACL entry for %s found: %s", host, acl)
+	log.Debugf("ACL entry for vhost %s found: %s", host, acl)
 	log.Debugf("URI prefixes for vhost %s: %s", host, acl.UrlPrefixes)
 
 	// Try to match against prefix first
@@ -204,10 +204,9 @@ func CheckError(e error) {
 	}
 }
 
-func ReadConfig(config *Config, configfile string) {
-	// Read the config file
-	c, err := ioutil.ReadFile(configfile)
+func CheckConfigError(err error, config *Config) {
 	if err != nil {
+		// Is this the first time trying to load the config?
 		if config.Configfile == "" {
 			log.Fatal(err)
 			panic(err)
@@ -217,17 +216,16 @@ func ReadConfig(config *Config, configfile string) {
 		}
 	}
 
+}
+
+func ReadConfig(config *Config, configfile string) {
+	// Read the config file
+	c, err := ioutil.ReadFile(configfile)
+	CheckConfigError(err, config)
+
 	// Unmarshal the config file
 	err = json.Unmarshal(c, &config)
-	if err != nil {
-		if config.Configfile == "" {
-			log.Fatal(err)
-			panic(err)
-		} else {
-			log.Errorf("Reloading config file failed: %s", err)
-			return
-		}
-	}
+	CheckConfigError(err, config)
 
 	// Set appropriate log-level
 	if config.Debug {
@@ -236,17 +234,13 @@ func ReadConfig(config *Config, configfile string) {
 		log.SetLevel(log.InfoLevel)
 	}
 
-	config.Configfile = configfile
+	// Try to load the ECC pubkey
 	config.Pubkey, err = ssocookie.ReadECCPublicKeyPem(config.Pubkeyfile, config.Pubkey)
-	if err != nil {
-		if config.Configfile == "" {
-			log.Fatal(err)
-			panic(err)
-		} else {
-			log.Errorf("Reloading config file failed: %s", err)
-			return
-		}
-	}
+	CheckConfigError(err, config)
+
+	// Setting config.Configfile shows that the config has been loaded
+	// successfully at least once
+	config.Configfile = configfile
 }
 
 func ParseArgs(config *Config) {
