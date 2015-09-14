@@ -1,6 +1,6 @@
 {
 	"cookie": "sso",
-	"debug": false,
+	"debug": true,
 	"pubkeyfile": "run/prime256v1-public.pem",
 	"headers": {
 		"ip": "X-Real-Ip",
@@ -19,7 +19,7 @@
 			"UrlPrefixes": {
 				"/secret/": {
 					"Users": ["jg666666"],
-					"Groups": ["x:engineering:cloud"]
+					"Groups": ["y:engineering:cloud"]
 				}
 			}
 		}

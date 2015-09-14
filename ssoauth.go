@@ -66,36 +66,49 @@ func Unauthorized(w http.ResponseWriter) {
 	http.Error(w, "Access not granted", http.StatusForbidden)
 }
 
-func VerifyAcl(r *http.Request, config *Config, host string, uri string, sso_cookie *ssocookie.Cookie) bool {
+func FindAclMatch(users []string, groups []string, sso_cookie *ssocookie.Cookie, section string) bool {
+	// Try to find a user (exact match)
+	for _, user := range users {
+		if user == sso_cookie.P.U {
+			log.Debugf("Found ACL rule for %s in section %s\n", user, section)
+			return true
+		}
+	}
+
+	// Try to find a group (prefix-match)
+	for _, group := range groups {
+		for _, usergroup := range strings.Split(sso_cookie.P.G, ",") {
+			if strings.HasPrefix(usergroup, group) {
+				log.Debugf("Found ACL rule for %s in section %s\n", group, section)
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+func VerifyAcl(config *Config, host string, uri string, sso_cookie *ssocookie.Cookie) bool {
 	acl, ok := config.Acl[host]
 
+	// We don't have this vhost
 	if !ok {
 		return false
 	}
 
-	log.Debugf("acl entry: %s", acl)
+	log.Debugf("ACL entry for %s found: %s", host, acl)
+	log.Debugf("URI prefixes for vhost %s: %s", host, acl.UrlPrefixes)
 
-	log.Debugf("vhosts: %s", acl.UrlPrefixes)
+	// Try to match against prefix first
 	for prefix, rules := range acl.UrlPrefixes {
 		if strings.HasPrefix(uri, prefix) {
-			log.Debugf("%s%s: Users: %s, Groups: %s\n", host, prefix, rules.Users, rules.Groups)
-			for _, user := range rules.Users {
-				if user == sso_cookie.P.U {
-					log.Debugf("Found user %s\n", user)
-					return true
-				}
-			}
-			for _, group := range rules.Groups {
-				for _, usergroup := range strings.Split(sso_cookie.P.G, ",") {
-					if strings.HasPrefix(usergroup, group) {
-						log.Debugf("Found group prefix %s\n", group)
-						return true
-					}
-				}
-			}
+			log.Debugf("Host/URI %s%s found: Users: %s, Groups: %s\n", host, prefix, rules.Users, rules.Groups)
+			return FindAclMatch(rules.Users, rules.Groups, sso_cookie, "prefix")
 		}
 	}
-	return false
+
+	// Try to match against vhost users/groups
+	return FindAclMatch(acl.Users, acl.Groups, sso_cookie, "global")
 }
 
 // Check that the cookie exists, is still valid and that the signature over the
@@ -165,7 +178,7 @@ func AuthHandler(config *Config) http.Handler {
 		}
 
 		// Look for ACL entry for this host, URI, user and groups
-		acl_ok := VerifyAcl(r, config, host, uri, sso_cookie)
+		acl_ok := VerifyAcl(config, host, uri, sso_cookie)
 
 		if !acl_ok {
 			requestLogger.Warnf("Found no ACL entry for user %s, groups %s", sso_cookie.P.U, sso_cookie.P.G)
