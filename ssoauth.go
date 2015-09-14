@@ -14,7 +14,10 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -45,6 +48,7 @@ type Config struct {
 	Pubkey     crypto.PublicKey
 	Acl        AclConfig
 	Debug      bool
+	Configfile string
 }
 
 // functions
@@ -182,18 +186,30 @@ func CheckError(e error) {
 	}
 }
 
-func ParseArgs(config *Config) {
-	configfile := flag.String("config", "config.json", "ACL config file (JSON)")
-	flag.BoolVar(&config.Debug, "debug", false, "Debug-level output")
-	flag.Parse()
-
+func ReadConfig(config *Config, configfile string) {
 	// Read the config file
-	c, err := ioutil.ReadFile(*configfile)
-	CheckError(err)
+	c, err := ioutil.ReadFile(configfile)
+	if err != nil {
+		if config.Configfile == "" {
+			log.Fatal(err)
+			panic(err)
+		} else {
+			log.Errorf("Reloading config file failed: %s", err)
+			return
+		}
+	}
 
 	// Unmarshal the config file
 	err = json.Unmarshal(c, &config)
-	CheckError(err)
+	if err != nil {
+		if config.Configfile == "" {
+			log.Fatal(err)
+			panic(err)
+		} else {
+			log.Errorf("Reloading config file failed: %s", err)
+			return
+		}
+	}
 
 	// Set appropriate log-level
 	if config.Debug {
@@ -202,8 +218,26 @@ func ParseArgs(config *Config) {
 		log.SetLevel(log.InfoLevel)
 	}
 
+	config.Configfile = configfile
 	config.Pubkey, err = ssocookie.ReadECCPublicKeyPem(config.Pubkeyfile, config.Pubkey)
-	CheckError(err)
+	if err != nil {
+		if config.Configfile == "" {
+			log.Fatal(err)
+			panic(err)
+		} else {
+			log.Errorf("Reloading config file failed: %s", err)
+			return
+		}
+	}
+}
+
+func ParseArgs(config *Config) {
+	configfile := flag.String("config", "config.json", "ACL config file (JSON)")
+	flag.BoolVar(&config.Debug, "debug", false, "Debug-level output")
+	flag.Parse()
+
+	// Read the config file
+	ReadConfig(config, *configfile)
 }
 
 func main() {
@@ -213,6 +247,17 @@ func main() {
 	http.Handle("/auth", AuthHandler(config))
 
 	ParseArgs(config)
+
+	// Setup signal handling
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, syscall.SIGHUP)
+
+	go func() {
+		for sig := range c {
+			log.Warnf("Received SIGHUP (%s), reloading config...", sig)
+			ReadConfig(config, config.Configfile)
+		}
+	}()
 
 	log.Infof("ssoauth server running on 127.0.0.1:%d", config.Port)
 	log.Fatal(http.ListenAndServe(fmt.Sprintf("127.0.0.1:%d", config.Port), nil))
