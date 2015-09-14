@@ -82,9 +82,11 @@ func VerifyAcl(r *http.Request, config *Config, host string, uri string, sso_coo
 				}
 			}
 			for _, group := range rules.Groups {
-				if strings.HasPrefix(sso_cookie.P.G, group) {
-					log.Debugf("Found group prefix %s\n", group)
-					return true
+				for _, usergroup := range strings.Split(sso_cookie.P.G, ",") {
+					if strings.HasPrefix(usergroup, group) {
+						log.Debugf("Found group prefix %s\n", group)
+						return true
+					}
 				}
 			}
 		}
@@ -153,7 +155,7 @@ func AuthHandler(config *Config) http.Handler {
 			return
 		}
 
-		// Look for ACL entry for this host, URI, user and group
+		// Look for ACL entry for this host, URI, user and groups
 		acl_ok := VerifyAcl(r, config, host, uri, sso_cookie)
 
 		if !acl_ok {
@@ -165,8 +167,7 @@ func AuthHandler(config *Config) http.Handler {
 		// We arrived here, accept the request and set the reply headers
 		w.Header().Set(config.ReturnHeaders.User, sso_cookie.P.U)
 		w.Header().Set(config.ReturnHeaders.Groups, sso_cookie.P.G)
-		w.Header().Set(config.ReturnHeaders.Expiry, fmt.Sprintf("%d",
-			sso_cookie.E))
+		w.Header().Set(config.ReturnHeaders.Expiry, fmt.Sprintf("%d", sso_cookie.E))
 		fmt.Fprintf(w, "Authorized!\n")
 
 		log.Infof("Succesful request by %s for %s%s from %s", sso_cookie.P.U, host, uri, ip)

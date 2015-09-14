@@ -33,7 +33,7 @@ type Config struct {
 
 // TODO: Make this more general / better to integrate
 func Authenticate(r *http.Request) (string, string) {
-	return "jg123456", "x:engineering"
+	return "jg123456", "x:engineering:cloud:backend,x:research"
 }
 
 func LoginHandler(config *Config) http.Handler {
