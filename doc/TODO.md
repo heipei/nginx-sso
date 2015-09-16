@@ -37,7 +37,6 @@ Problems
 Others
 ======
 - nginx-sso: https://www.timmclean.net/2015/03/31/jwt-algorithm-confusion.html
-- nginx/auth/cookie: http://wiki.shopware.com/SSO-with-Nginx-auth_request-module_detail_1811.html
 - https://developers.shopware.com/blog/2015/03/02/sso-with-nginx-authrequest-module/
  - token passed to backend
 - Apache: authtkt

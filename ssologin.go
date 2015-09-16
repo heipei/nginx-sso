@@ -36,36 +36,49 @@ func Authenticate(r *http.Request) (string, string) {
 	return "jg123456", "x:engineering:cloud:backend,x:research"
 }
 
+func SetSSOCookie(config *Config, w http.ResponseWriter, r *http.Request) bool {
+	ip := r.Header.Get(config.Headers.Ip)
+	if ip == "" {
+		log.Warnf("Header %s missing", config.Headers.Ip)
+		http.Error(w, "Not logged in", http.StatusUnauthorized)
+		return false
+	}
+
+	// Print remote address and UTC-adjusted timestamp in RFC3339
+	log.Infof("New login request from %s at %s ", ip, time.Now().UTC().Format(time.RFC3339))
+
+	// Get the cookie payload from the Authenticate function
+	sso_cookie_payload := new(ssocookie.CookiePayload)
+	sso_cookie_payload.U, sso_cookie_payload.G = Authenticate(r)
+
+	// Serialize the ssocookie into a string
+	cookie_string := ssocookie.CreateCookie(ip, sso_cookie_payload,
+		config.Privkey, config.Expiry)
+
+	// Set the cookie
+	expiration := time.Now().Add(config.Expiry)
+	cookie := http.Cookie{Name: config.Cookie, Value: cookie_string,
+		Expires: expiration, Secure: config.Secure, Domain: config.Domain}
+	http.SetCookie(w, &cookie)
+
+	return true
+}
+
+func Unauthenticated(w http.ResponseWriter) {
+	// Careful: StatusUnauthorized returns HTTP 401
+	// HTTP 401 is called "Unauthorized", but actually means
+	// "authentication failed" as per RFC 7235
+	http.Error(w, "Not logged in", http.StatusUnauthorized)
+}
+
 func LoginHandler(config *Config) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
-		ip := r.Header.Get(config.Headers.Ip)
-		if ip == "" {
-			log.Warnf("Header %s missing", config.Headers.Ip)
-			http.Error(w, "Not logged in", http.StatusUnauthorized)
-			return
+		// TODO: Login logic here (sqlite + bcrypt e.g.)
+		if SetSSOCookie(config, w, r) {
+			fmt.Fprintf(w, "You have been logged in!\n")
+		} else {
+			fmt.Fprintf(w, "Error logging in...\n")
 		}
-
-		// Print remote address and UTC-adjusted timestamp in RFC3339
-		// (profile of ISO 8601)
-		log.Infof("New login request from %s at %s ", r.RemoteAddr,
-			time.Now().UTC().Format(time.RFC3339))
-
-		// Get the cookie payload from the Authenticate function
-		sso_cookie_payload := new(ssocookie.CookiePayload)
-		sso_cookie_payload.U, sso_cookie_payload.G = Authenticate(r)
-
-		// Serialize the ssocookie into a string
-		cookie_string := ssocookie.CreateCookie(ip, sso_cookie_payload,
-			config.Privkey, config.Expiry)
-
-		// Set the cookie
-		expiration := time.Now().Add(config.Expiry)
-		cookie := http.Cookie{Name: config.Cookie, Value: cookie_string,
-			Expires: expiration, Secure: config.Secure, Domain: config.Domain}
-		http.SetCookie(w, &cookie)
-
-		fmt.Fprintf(w, "You have been logged in!\n")
 	})
 }
 
