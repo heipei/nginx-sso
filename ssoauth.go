@@ -93,6 +93,7 @@ func VerifyAcl(config *Config, host string, uri string, sso_cookie *ssocookie.Co
 
 	// We don't have this vhost
 	if !ok {
+		log.Warnf("No ACL entry for vhost %s found", host)
 		return false
 	}
 
@@ -215,7 +216,6 @@ func CheckConfigError(err error, config *Config) {
 			return
 		}
 	}
-
 }
 
 func ReadConfig(config *Config, configfile string) {

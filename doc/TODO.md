@@ -19,7 +19,6 @@ Problems
  - Integrate and ship basic user/pw database store?
 
 - Default values for JSON config parse
-- Logging withFields (e.g. during auth with IP / URL)
 - Put more common methods into ssocookie (print request, get headers)
 - Groups should be list that is converted to string
 
