@@ -11,6 +11,9 @@ With nginx-sso you can:
 - Authorize users
 - Provide user-information to your backend application
 
+nginx-sso is still very much work-in-progress and should not be used for
+production applications.
+
 Overview
 --------
 
@@ -23,14 +26,14 @@ htdigest, OAuth, homebrew). The common denominator is that it expects a
 non-empty string for the username and an optional group-string
 (comma-delimited). These two values will be encoded in the sso cookie.
 
-The ssoauth tool takes the sso cookie, verifies its integrity (using the
-attached signature) and finally checks the username and groups against a list
-of ACL entries for different vhosts. If all of these checks pass, it will
-return the username, groups and expiry time of the cookie to the nginx
-frontend, which can pass it on to your application in the form of a plain HTTP
-header. Your application could then use this header to find the user in its own
-user database which could contain additional attributes (e.g. roles, contact
-info, etc).
+The ssoauth tool takes the sso cookie, verifies its integrity and freshness
+(using the attached signature) and finally checks the username and groups
+against a list of ACL entries for different vhosts. If all of these checks
+pass, it will return the username, groups and expiry time of the cookie to the
+nginx frontend, which can pass it on to your application in the form of a plain
+HTTP header. Your application could then use this header to find the user in
+its own user database which could contain additional attributes (e.g. roles,
+contact info, etc).
 
 Building
 --------
@@ -54,3 +57,9 @@ ECC keypair generation
 ----------------------
 
 To create an ECC keypair, you can use the tool in tools/ecc.go.
+
+License
+-------
+
+nginx-sso is licensed under the GNU General Public License v2. See the file
+`LICENSE` for details.  

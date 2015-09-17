@@ -2,22 +2,18 @@
 vim:ft=markdown:et:ts=2:sw=2
 -->
 
-Problems
-========
-- Write tests
-
+TODO List
+=========
 - Login-flow
  - Pass through HTTP request to another backend and then set cookie for response (?)
  - Integrate and ship basic user/pw database store?
-
-- Default values for JSON config parse
-
+- Default values for JSON config parser
 - Unify method naming- and argument convention
-
 - Figure out good integration of login code into existing systems
+- Write tests
 
-Others
-======
+Similar software & discussions
+==============================
 - nginx-sso: https://www.timmclean.net/2015/03/31/jwt-algorithm-confusion.html
 - https://developers.shopware.com/blog/2015/03/02/sso-with-nginx-authrequest-module/
  - token passed to backend
