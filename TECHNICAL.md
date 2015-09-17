@@ -4,15 +4,35 @@ nginx-sso - Design document
 This document details the technical architecture and reasoning behind the
 nginx-sso system.
 
+The request flow
+----------------
+    +--------------+  User / Pass
+    | nginx        |  <----------+
+    | Login-Server |   SSO Cookie    User
+    | ECC PrivKey  |  +---------->
+    +--------------+                 +
+                                     | SSO
+                                     | Cookie
+                                     v
+    +---------+ <-----------  +---------------+
+    | Service |  Remote-User  |  nginx        |
+    +---------+  Remote-Group |  Auth-Server  |
+                              |  ECC PubKey   |
+                              |  ACL          |
+                              +---------------+
+
 The sso cookie
 --------------
 
 nginx-sso is a single-sign-on system for HTTP which is based on cookies and
-ECDSA signatures. The centerpiece of nginx-sso is the 'sso' cookie which looks like this:
+ECDSA signatures. The centerpiece of nginx-sso is the 'sso' cookie which looks
+like this:
 
-sso: { Payload: { username, groups}, Expiry, R, S (ECDSA sig) }
+`sso: { Payload: { username, groups}, Expiry, R, S (ECDSA sig) }`
+
 or to put it in types:
-sso: { P: { U: string, G: string, E: int, R: bignum, S: bignum }
+
+`sso: { P: { U: string, G: string }, E: int, R: bignum, S: bignum }`
 
 The cookie contains some payload (in our case a username and a groups string),
 an expiry and an ECDSA signature over the payload, the expiry and the IP of
@@ -26,7 +46,7 @@ identified himself and will be set for a common domain.
 
 Only the ssologin tool will need to be in possession of the corresponding ECC
 private key. This way, even if an application server is compromised, it can not
-be used to issue false sso cookies. 
+be used to issue false sso cookies.
 
 The nginx auth request endpoint
 -------------------------------

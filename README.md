@@ -45,7 +45,7 @@ HTTP header. Your application could then use this header to find the user in
 its own user database which could contain additional attributes (e.g. roles,
 contact info, etc).
 
-More information can be found in the file TECHNICAL.md.
+More information can be found in the file [TECHNICAL.md](TECHNICAL.md).
 
 Building
 --------
@@ -76,4 +76,4 @@ License
 -------
 
 nginx-sso is licensed under the GNU General Public License v2. See the file
-`LICENSE` for details.  
+[LICENSE](LICENSE) for details.  
