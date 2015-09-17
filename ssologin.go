@@ -50,7 +50,8 @@ type Config struct {
 	Debug       bool
 }
 
-// TODO: This is just one example
+// Get a username and groups based on the HTTP request
+// TODO: This is just an example
 func Authenticate(r *http.Request) (string, string) {
 	basic_user, basic_password, auth_ok := r.BasicAuth()
 
@@ -65,6 +66,7 @@ func Authenticate(r *http.Request) (string, string) {
 	}
 	defer db.Close()
 
+	// FIXME: This is a table with plain user/pw. Probably not a good idea.
 	sqlStmt := "create table users if not exists (username string not null primary key, password string not null, groups string default null);"
 	_, err = db.Exec(sqlStmt)
 
@@ -93,6 +95,7 @@ func Authenticate(r *http.Request) (string, string) {
 	}
 }
 
+// Sets the details of the sso cookie
 func SetSSOCookie(config *Config, w http.ResponseWriter, r *http.Request) bool {
 	ip := r.Header.Get(config.Headers.Ip)
 	if ip == "" {

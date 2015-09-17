@@ -35,6 +35,8 @@ HTTP header. Your application could then use this header to find the user in
 its own user database which could contain additional attributes (e.g. roles,
 contact info, etc).
 
+More information can be found in the file TECHNICAL.md.
+
 Building
 --------
 
