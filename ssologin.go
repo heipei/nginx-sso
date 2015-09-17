@@ -6,11 +6,13 @@ package main
 // imports [[[
 import (
 	"crypto/ecdsa"
+	"database/sql"
 	"encoding/json"
 	"flag"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/heipei/nginx-sso/ssocookie"
+	_ "github.com/mattn/go-sqlite3"
 	"io/ioutil"
 	"net/http"
 	"time"
@@ -31,9 +33,47 @@ type Config struct {
 	Debug       bool
 }
 
-// TODO: Make this more general / better to integrate
+// TODO: This is just one example
 func Authenticate(r *http.Request) (string, string) {
-	return "jg123456", "x:engineering:cloud:backend,x:research"
+	basic_user, basic_password, auth_ok := r.BasicAuth()
+
+	if !auth_ok {
+		log.Warnf("HTTP Basic Auth missing")
+		return "", ""
+	}
+
+	db, err := sql.Open("sqlite3", "run/users.db")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	sqlStmt := "create table users if not exists (username string not null primary key, password string not null, groups string default null);"
+	_, err = db.Exec(sqlStmt)
+
+	rows, err := db.Prepare("select username, password, groups from users where username = ?")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rows.Close()
+
+	var username string
+	var password string
+	var groups string
+
+	err = rows.QueryRow(basic_user).Scan(&username, &password, &groups)
+	if err != nil {
+		log.Warnf("User %s not found in database: %s", basic_user, err)
+		return "", ""
+	}
+
+	if basic_password == password {
+		log.Debugf("User %s: Password matches!", basic_user)
+		return username, groups
+	} else {
+		log.Warnf("User %s: Wrong password!", basic_user)
+		return "", ""
+	}
 }
 
 func SetSSOCookie(config *Config, w http.ResponseWriter, r *http.Request) bool {
@@ -50,6 +90,10 @@ func SetSSOCookie(config *Config, w http.ResponseWriter, r *http.Request) bool {
 	// Get the cookie payload from the Authenticate function
 	sso_cookie_payload := new(ssocookie.CookiePayload)
 	sso_cookie_payload.U, sso_cookie_payload.G = Authenticate(r)
+
+	if sso_cookie_payload.U == "" {
+		return false
+	}
 
 	// Serialize the ssocookie into a string
 	cookie_string := ssocookie.CreateCookie(ip, sso_cookie_payload,
@@ -73,11 +117,10 @@ func Unauthenticated(w http.ResponseWriter) {
 
 func LoginHandler(config *Config) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// TODO: Login logic here (sqlite + bcrypt e.g.)
 		if SetSSOCookie(config, w, r) {
 			fmt.Fprintf(w, "You have been logged in!\n")
 		} else {
-			fmt.Fprintf(w, "Error logging in...\n")
+			Unauthenticated(w)
 		}
 	})
 }

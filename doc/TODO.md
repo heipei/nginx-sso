@@ -19,20 +19,10 @@ Problems
  - Integrate and ship basic user/pw database store?
 
 - Default values for JSON config parse
-- Put more common methods into ssocookie (print request, get headers)
-- Groups should be list that is converted to string
 
 - Unify method naming- and argument convention
 
 - Figure out good integration of login code into existing systems
-
-- Maybe implement generic JSON payload
-  - http://devel.io/2013/08/19/go-handling-arbitrary-json/
-  - On top of that: Have generic functions to verify the payload (ACL)
-  - Will need generic mapping of attribute to return HTTP header as well
-
-- Explore whether we can specify HTTP Host during login and set the cookie for that domain
- - This way one login-controller can service multiple domains
 
 Others
 ======

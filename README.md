@@ -2,10 +2,8 @@ nginx-sso
 =========
 
 nginx-sso is a simple single-sign-on (SSO) solution to be used together with
-nginx. It is based on ECC public key signatures and cookies.
-
-Features
---------
+nginx and the nginx auth_request module. It uses ECC public key signatures and
+cookies to work "offline" as far as the service provider is concerned.
 
 With nginx-sso you can:
 
@@ -13,10 +11,32 @@ With nginx-sso you can:
 - Authorize users
 - Provide user-information to your backend application
 
+Overview
+--------
+
+nginx-sso consist of two components: The ssologin endpoint which will set the
+sso cookie and the ssoauth endpoint which will consume the cookie.
+
+The ssologin tool has to be customized to your own login architecture. It
+requires customization to accomodate your user-credential store (be it LDAP,
+htdigest, OAuth, homebrew). The common denominator is that it expects a
+non-empty string for the username and an optional group-string
+(comma-delimited). These two values will be encoded in the sso cookie.
+
+The ssoauth tool takes the sso cookie, verifies its integrity (using the
+attached signature) and finally checks the username and groups against a list
+of ACL entries for different vhosts. If all of these checks pass, it will
+return the username, groups and expiry time of the cookie to the nginx
+frontend, which can pass it on to your application in the form of a plain HTTP
+header. Your application could then use this header to find the user in its own
+user database which could contain additional attributes (e.g. roles, contact
+info, etc).
+
 Building
 --------
 
-For now, use the Makefile by calling `make`.
+For now, use the Makefile by calling `make`. The ssologin.go is meant to be an
+example on how to use the nginx-sso system to set the sso cookie during login.
 
 Getting started
 ---------------
