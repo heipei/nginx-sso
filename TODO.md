@@ -11,6 +11,7 @@ TODO List
 - Unify method naming- and argument convention
 - Figure out good integration of login code into existing systems
 - Write tests
+- Provide annotated example configs
 
 Similar software & discussions
 ==============================

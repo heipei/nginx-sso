@@ -8,17 +8,27 @@ cookies to work "offline" as far as the service provider is concerned.
 With nginx-sso you can:
 
 - Authenticate users
-- Authorize users
-- Provide user-information to your backend application
+- Authorize users to access a specific resource
+- Provide authenticated user-information to your backend application
+- Allow your application server to effectively stay offline
+
+All by deploying a single (static) binary + config to a stock nginx instance.
 
 nginx-sso is still very much work-in-progress and should not be used for
-production applications.
+production applications. It is the first application I've developed using
+golang and probably shows as much in various places.
 
 Overview
 --------
 
-nginx-sso consist of two components: The ssologin endpoint which will set the
-sso cookie and the ssoauth endpoint which will consume the cookie.
+nginx-sso works by creating a session cookie called 'sso'. This cookie contains
+information about the user, the expiry date and the IP of the client.
+Furthermore, the cookie is protected by an ECDSA signature across the payload
+during login. In our case, the 'ssologin' tool will create that cookie.
+
+Any service in the possession of the corresponding public key can therefore
+extract the information from the cookie and verify that it is intact and still
+valid. This is done by the 'ssoauth' tool.
 
 The ssologin tool has to be customized to your own login architecture. It
 requires customization to accomodate your user-credential store (be it LDAP,
@@ -46,19 +56,21 @@ example on how to use the nginx-sso system to set the sso cookie during login.
 Getting started
 ---------------
 
-There is an example nginx.conf in doc/ 
+There is an example nginx.conf in etc/ 
 
 1. Start nginx: ~/local/sbin/nginx -c $PWD/etc/nginx.conf
-2. Start ssoauth: ./ssoauth -config etc/ssoauth.json
-3. Start ssologin: ./ssologin -config etc/ssologin.json
-4. Add login.domain.dev and auth.domain.dev to 127.0.0.1 to /etc/hosts
-5. Browse to http://username:password@login.domain.dev:8080/login
-6. Browse to http://auth.domain.dev:8080/secret
+2. Generate a keypair using the ecc.go tool in tools/
+3. Start ssoauth: ./ssoauth -config etc/ssoauth.json
+4. Start ssologin: ./ssologin -config etc/ssologin.json
+5. Add login.domain.dev and auth.domain.dev to 127.0.0.1 to /etc/hosts
+6. Browse to http://username:password@login.domain.dev:8080/login
+7. Browse to http://auth.domain.dev:8080/secret
 
-ECC keypair generation
-----------------------
+Author
+------
 
-To create an ECC keypair, you can use the tool in tools/ecc.go.
+nginx-sso was conceived by Johannes Gilger. Any additional contributors will be
+listed here.
 
 License
 -------

@@ -93,3 +93,8 @@ nginx-sso has a number of limitations compared to other sso systems.
 - nginx-sso will only work across the same domain due to the cookie.
 - Performance might be a concern.
 - Setup might seem complex, but is relatively straightforward compared to similar systems.
+
+Resources
+---------
+- nginx documentation: http://nginx.org/en/docs/http/ngx_http_auth_request_module.html
+- old pubcookie implemenation for nginx: http://www.vanko.me/book/page/pubcookie-module-nginx
