@@ -2,14 +2,6 @@
 vim:ft=markdown:et:ts=2:sw=2
 -->
 
-Two parts
-=========
-- nginx-sso auth endpoint
-- login middleware / function
- - https://justinas.org/writing-http-middleware-in-go/
- - function to create the cookie based on some payload (hash + ecdsa + setting the cookie)
- - user-defined function to get the username / group / payload (in general)
-
 Problems
 ========
 - Write tests
@@ -34,13 +26,11 @@ Others
 - Old PubCookie module for nginx: http://www.vitki.net/book/page/pubcookie-module-nginx
 
 - Also document that this is a very basic solution
- - Next step could be to put a better-performing session store in which does not actually have to verify the sig each time only hash the cookie or set another cookie
+ - Next step could be to put a better-performing session store in which does
+   not actually have to verify the sig each time only hash the cookie or set
+   another cookie
  - Maybe even set a cookie and then have nginx verify the cookie from there on
- - Better read up on nginx session / auth management, performance, best practices
  - Login could be done using something like oauth
-
-- https://elithrar.github.io/article/custom-handlers-avoiding-globals/ for handling context in a golang web app
-- libsodium
 
 ECC Resources
 =============
