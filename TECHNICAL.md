@@ -7,19 +7,35 @@ nginx-sso system.
 The request flow
 ----------------
     +--------------+  User / Pass
-    | nginx        |  <----------+
-    | Login-Server |   SSO Cookie    User
+    | (nginx)      |  <----------+
+    | ssologin     |   SSO Cookie    User
     | ECC PrivKey  |  +---------->
-    +--------------+                 +
-                                     | SSO
-                                     | Cookie
-                                     v
-    +---------+ <-----------  +---------------+
-    | Service |  Remote-User  |  nginx        |
-    +---------+  Remote-Group |  Auth-Server  |
-                              |  ECC PubKey   |
-                              |  ACL          |
-                              +---------------+
+    +--------------+    Step 1+2     +
+    login.domain.dev                 | SSO Cookie
+                                     | Step 3
+      Step 9      Step 8             v           Step 4+7    Step 5+6 
+    +---------+ <-----------  +---------------+ ---------> +------------+
+    | Service |  Remote-User  |  nginx        |  Cookie    | ssoauth    |
+    +---------+  Remote-Group |  auth_request | <--------- | ECC PubKey |
+                              +---------------+  Username  | ACL        |
+                               auth.domain.dev   Groups    +------------+
+                                                                    
+
+1. The user performs a login at the **ssologin** tool resource on
+   `login.domain.dev`.
+2. The **ssologin** returns the encoded **sso** cookie to the user.
+3. The user makes a request for a protected resource on `auth.domain.dev`.
+4. nginx performs a subrequest to the **ssoauth** backend, containing the
+   headers of the original request.
+5. The **ssoauth** backend decodes and verifies the cookie.
+6. The **ssoauth** backend queries its ACL about whether the user can access
+   this specific resource.
+7. On success, the **ssoauth** backend sets the response headers in response to
+   the subrequest.
+8. nginx takes the response headers of the subrequest and forwards them to the
+   **service** application.
+9. The **service** application can use the Remote-User / Remote-Group header
+   as-is.
 
 The sso cookie
 --------------
@@ -41,7 +57,7 @@ been modified, that the cookie has not expired and that the IP of the client
 didn't change.
 
 The cookie payload is serialized into JSON and URL-escaped to be stored as an
-actual cookie. It is created by the ssologin tool once a user has successfully
+actual cookie. It is created by the **ssologin** tool once a user has successfully
 identified himself and will be set for a common domain.
 
 Only the ssologin tool will need to be in possession of the corresponding ECC
@@ -57,16 +73,18 @@ subrequest to a specified resource ("auth endpoint"). The auth endpoint can
 either reply with a HTTP 200 (OK) or it can issue a HTTP 401/403
 (Unauthenticated / Unauthorized).
 
-To make the decision, the auth endpoint can parse the details of the original
-request to nginx from different (custom) headers: X-Original-Uri (the URI which
-was requested), X-Real-Ip (the original IP) plus any headers that were part of
-the original request (including cookies). The auth_request module does not need
-access to the body of the original request.
+Our endpoint is called **ssoauth**, and for performance-reasons it should run
+on the same hosts as the nginx instance. To make the decision (accept/deny),
+the auth endpoint can retrieve the details of the original request to nginx
+from different (custom) headers: `X-Original-Uri` (the URI which was
+requested), `X-Real-Ip` (the original IP) plus any headers that were part of
+the original request (including the **sso** cookie). The auth_request module
+does not need to forward the body of the original request, only its headers.
 
 When the auth endpoint replies to nginx, it can do so with its own headers.
 These can be copied and then passed on to whatever proxied backend is protected
 by the auth_request module in the first place. In our case, the ssoauth backend
-will reply with the headers Remote-User, Remote-Groups and Remote-Expiry if
+will reply with the headers `Remote-User`, `Remote-Groups` and `Remote-Expiry` if
 authentication was successful.
 
 Authentication for backend applications
@@ -94,8 +112,6 @@ the global vhost configuration for this prefix.
 Benefits
 --------
 
-Compared to other systems, nginx-sso has these benefits:
-
 - golang, simple deploys (one static binary, config and pubkey for services)
 - Few "moving parts" (e.g. no interconnectivity between services and IdP)
 - Works with stock nginx (no out-of-tree patches or lua modules)
@@ -105,14 +121,18 @@ Compared to other systems, nginx-sso has these benefits:
 Limitations
 -----------
 
-nginx-sso has a number of limitations compared to other sso systems.
-
 - Revocation of an active session is not possible unless you were to blacklist
   the user at each service.
 - Inclusion of additional user attributes will result in the cookie growing.
 - nginx-sso will only work across the same domain due to the cookie.
 - Performance might be a concern.
 - Setup might seem complex, but is relatively straightforward compared to similar systems.
+
+Similar software
+----------------
+- [https://neon1.net/mod_auth_pubtkt/](https://neon1.net/mod_auth_pubtkt/) - Apache-only, almost works like nginx-sso
+- [http://www.openfusion.com.au/labs/mod_auth_tkt/](http://www.openfusion.com.au/labs/mod_auth_tkt/) - Apache mod_auth_tkt
+- [Pubcookie](http://pubcookie.org/) - Apache-only, Pubcookie system 
 
 Resources
 ---------

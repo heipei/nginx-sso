@@ -1,34 +1,30 @@
-nginx-sso
-=========
+nginx-sso - Simple offline SSO for nginx
+========================================
 
-nginx-sso is a simple single-sign-on (SSO) solution to be used together with
-nginx and the nginx auth_request module. It uses ECC public key signatures and
-cookies to work "offline" as far as the service provider is concerned.
+nginx-sso is a simple single-sign-on (SSO) solution to be used with nginx and
+the nginx auth_request module. It uses ECC public key signatures and cookies to
+authenticate users in an *offline* fashion, as far as the service provider is
+concerned.
 
 With nginx-sso you can:
 
-- Authenticate users
-- Authorize users to access a specific resource
-- Provide authenticated user-information to your backend application
+- Authenticate users and check session validty
+- Authorize users to access specific resources
+- Provide authenticated information about the user to your backend application
 - Allow your application server to effectively stay offline
 
-All by deploying a single (static) binary + config to a stock nginx instance.
-
-nginx-sso is still very much work-in-progress and should not be used for
-production applications. It is the first application I've developed using
-golang and probably shows as much in various places.
+You can use it by deploying a single (static) binary and a config to a stock
+nginx instance.
 
 Overview
 --------
 
-nginx-sso works by creating a session cookie called 'sso'. This cookie contains
-information about the user, the expiry date and the IP of the client.
-Furthermore, the cookie is protected by an ECDSA signature across the payload
-during login. In our case, the 'ssologin' tool will create that cookie.
-
-Any service in the possession of the corresponding public key can therefore
-extract the information from the cookie and verify that it is intact and still
-valid. This is done by the 'ssoauth' tool.
+nginx-sso works by creating a session cookie **sso**. This cookie contains
+information about the user, the expiry date of his session and the IP of the
+client which logged in.  Furthermore, the cookie contains an ECDSA signature
+which protects the integrity of the payload during login. In our case, the
+**ssologin** tool has the necessary ECC private key and creates the cookie and
+the signature after a successful login.
 
 The ssologin tool has to be customized to your own login architecture. It
 requires customization to accomodate your user-credential store (be it LDAP,
@@ -36,6 +32,9 @@ htdigest, OAuth, homebrew). The common denominator is that it expects a
 non-empty string for the username and an optional group-string
 (comma-delimited). These two values will be encoded in the sso cookie.
 
+Any service in the possession of the corresponding public key can then use the
+information stored in the sso cookie. With nginx-sso, this is done by the
+**ssoauth** tool. This tool is our *authentication endpoint* queried by nginx.
 The ssoauth tool takes the sso cookie, verifies its integrity and freshness
 (using the attached signature) and finally checks the username and groups
 against a list of ACL entries for different vhosts. If all of these checks
@@ -66,10 +65,20 @@ There is an example nginx.conf in etc/
 6. Browse to http://username:password@login.domain.dev:8080/login
 7. Browse to http://auth.domain.dev:8080/secret
 
+Contributing
+------------
+
+
+nginx-sso is a work-in-progress and should not be used for production
+applications. It is the first application I've developed in golang.  I'd like
+to get some help to improve the codebase and make it more adaptable to other
+setups. Please consider forking the repository and creating a pull-request on
+Github.
+
 Author
 ------
 
-nginx-sso was conceived by Johannes Gilger. Any additional contributors will be
+nginx-sso was written by Johannes Gilger. Any additional contributors will be
 listed here.
 
 License
